@@ -88,7 +88,8 @@ with st.sidebar:
 # Data Selection
 directory_length = len(st.session_state['directory'])
 selected_data = st.selectbox("Select Data", [file_name[directory_length:] for file_name in all_files])
-selected_data = st.session_state['directory'] + selected_data
+if selected_data != None:
+    selected_data = st.session_state['directory'] + selected_data
 
 if (selected_data != st.session_state['data_loc'] or
     prominence != st.session_state['prominence']):   # New data selected
