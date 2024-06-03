@@ -96,42 +96,21 @@ if (selected_data != st.session_state['data_loc'] or
 
 # Plot
 data = st.session_state['data']
-if data != None:
-    data.calibrate(st.session_state['a'], st.session_state['k'])  
-    characterisation, table = data.characterise()
-    characterisation = characterisation[:, 0]
 
-## Input
-col1, col2 = st.columns([2, 1])
-with col2:
-    spectrum_type = st.selectbox('Spectrum Type', ['Time', 'Mass (amu)', 'Mass (Co)'])
-    peak_detection = st.toggle('Peak Detection')
-    show_tag = st.toggle('Show Tag')
-    with st.container(border = True):
-        pointer = st.toggle('Pointer')
-        if spectrum_type == 'Time':
-            pointer_value = st.number_input('Pointer', data.time[0], data.time[-1], label_visibility='collapsed')
-        elif spectrum_type == 'Mass (amu)':
-            pointer_value = st.number_input('Pointer', data.mass[0], data.mass[-1], label_visibility='collapsed')
-        else:
-            pointer_value = st.number_input('Pointer', data.mass_element[0], data.mass_element[-1], label_visibility='collapsed')
-    
-
-## Plot
-if data != None:
+def plot():
     if spectrum_type == 'Time':
         fig = px.line(x=data.time, y=data.voltage)
         fig.update_layout(
             xaxis_title = 'time (us)',
             yaxis_title = 'accumulated voltage (V)')
-        
+            
         if peak_detection or show_tag:
             for i, peak in enumerate(data.peaks):
                 if 'Ar' in characterisation[i] and show_tag:
                     fig.add_vline(data.time[peak], line_dash="dash", line_color='blue', opacity=0.25)
                 elif peak_detection:
                         fig.add_vline(data.time[peak], line_dash='dot', line_color='grey', opacity=0.25)
-    
+        
     elif spectrum_type == 'Mass (amu)':
         fig = px.line(x=data.mass, y=data.voltage)
         fig.update_layout(
@@ -157,27 +136,45 @@ if data != None:
                     fig.add_vline(data.mass_element[peak], line_dash="dash", line_color='blue', opacity=0.25)
                 elif peak_detection:
                     fig.add_vline(data.mass_element[peak], line_dash='dot', line_color='grey', opacity=0.25)
-    
-    if pointer:
-        fig.add_vline(pointer_value, line_dash="dash", line_color="red")
-    
     fig.update_layout(xaxis=dict(showgrid=True))
-    
+    return fig
+
+
+if data != None:
+    data.calibrate(st.session_state['a'], st.session_state['k'])  
+    characterisation, table = data.characterise()
+    characterisation = characterisation[:, 0]
+
+    ## Input
+    col1, col2 = st.columns([2, 1])
+    with col2:
+        spectrum_type = st.selectbox('Spectrum Type', ['Time', 'Mass (amu)', 'Mass (Co)'])
+        peak_detection = st.toggle('Peak Detection')
+        show_tag = st.toggle('Show Tag')
+        fig = plot()
+        with st.container(border = True):
+            pointer = st.toggle('Pointer')
+            if spectrum_type == 'Time':
+                pointer_value = st.number_input('Pointer', data.time[0], data.time[-1], label_visibility='collapsed')
+            elif spectrum_type == 'Mass (amu)':
+                pointer_value = st.number_input('Pointer', data.mass[0], data.mass[-1], label_visibility='collapsed')
+            else:
+                pointer_value = st.number_input('Pointer', data.mass_element[0], data.mass_element[-1], label_visibility='collapsed')
+        if pointer:
+            fig.add_vline(pointer_value, line_dash="dash", line_color="red")
     with col1:
         st.plotly_chart(fig)
 
+    # Table
+    st.write('## Table')
 
-
-# Table
-st.write('## Table')
-
-max_columns = 9
-pd.set_option('display.max_rows', None)
-pd.options.display.float_format = '{:,.5f}'.format
-try:
-    st.dataframe(table.iloc[:, :max_columns])
-except:
-    pass
+    max_columns = 9
+    pd.set_option('display.max_rows', None)
+    pd.options.display.float_format = '{:,.5f}'.format
+    try:
+        st.dataframe(table.iloc[:, :max_columns])
+    except:
+        pass
 
 
 
