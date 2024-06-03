@@ -6,6 +6,7 @@ import tkinter as tk
 from tkinter import filedialog
 import glob
 from lib.calibration import load_data
+import lib
 import numpy as np
 import pandas as pd 
 import plotly.express as px
@@ -17,6 +18,10 @@ st.set_page_config(
 st.write("# FCS Visualiser")
 defaults = configparser.ConfigParser()
 defaults.read('defaults.ini')
+if  defaults.read('defaults.ini') == []:
+    lib.setup(defaults)
+    
+
 
 # Initialise session states
 if 'directory' not in st.session_state:
