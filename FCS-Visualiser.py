@@ -1,4 +1,5 @@
 # Imports
+import configparser
 import streamlit as st
 import streamlit.components.v1 as components
 import tkinter as tk
@@ -14,16 +15,18 @@ st.set_page_config(
     page_title="FCS Visualiser",
     page_icon="https://static-00.iconduck.com/assets.00/python-icon-512x509-pb65l7gl.png")
 st.write("# FCS Visualiser")
+defaults = configparser.ConfigParser()
+defaults.read('defaults.ini')
 
 # Initialise session states
 if 'directory' not in st.session_state:
-    st.session_state['directory'] = r'R:/CLASS/LAB/FCS/DATA/'
+    st.session_state['directory'] = defaults.get('defaults', 'directory')
 if 'prominence' not in st.session_state:
     st.session_state['prominence'] = 0.5
 if 'a' not in st.session_state:
-    st.session_state['a'] = 0.09949062
+    st.session_state['a'] = float(defaults.get('defaults', 'a'))
 if 'k' not in st.session_state:
-    st.session_state['k'] = 0.23745731
+    st.session_state['k'] = float(defaults.get('defaults', 'k'))
 if 'data' not in st.session_state:
     st.session_state['data'] = None
 if 'data_loc' not in st.session_state:
@@ -83,7 +86,9 @@ with st.sidebar:
                 st.warning('No data selected')
 
 # Data Selection
-selected_data = st.selectbox("Select Data", all_files)
+directory_length = len(st.session_state['directory'])
+selected_data = st.selectbox("Select Data", [file_name[directory_length:] for file_name in all_files])
+selected_data = st.session_state['directory'] + selected_data
 
 if (selected_data != st.session_state['data_loc'] or
     prominence != st.session_state['prominence']):   # New data selected
