@@ -7,9 +7,10 @@ An interactive web app to quickly visualise ToF data recorded by the FCS setup
 
 * `FCS-Visualiser.py`: main code to run the web app
 * `pages`: folder containing subpages of the web app
-* `lib`: folder containing dependencies of the main code
+* `modules`: folder containing dependencies of the main code
 * `CONTRIBUTING.md`: how to contribute to this project
-* `environment.yml`: portable conda environment description file.
+* `environment.yml`: portable conda environment description file
+* `masses.npy`: library containing the peak identifyers
 
 ## How to use?
 
