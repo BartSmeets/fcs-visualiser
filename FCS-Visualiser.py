@@ -1,7 +1,6 @@
 # Imports
 import configparser
 import streamlit as st
-import streamlit.components.v1 as components
 import tkinter as tk
 from tkinter import filedialog
 import glob
@@ -35,11 +34,14 @@ if 'k' not in st.session_state:
 if 'data' not in st.session_state:
     st.session_state['data'] = None
 if 'data_loc' not in st.session_state:
-    st.session_state['data_loc'] = None
-if 'table' not in st.session_state:
-    st.session_state['table'] = None
-if 'characterisation' not in st.session_state:
-    st.session_state['characterisation'] = None
+    st.session_state['data_loc'] = []
+if 'dataframe' not in st.session_state:
+    st.session_state['dataframe'] = pd.DataFrame({'time': [],
+                                                'mass': [],
+                                                'mass_element': [],
+                                                'voltage': [],
+                                                'name': []})
+    
 
 file_extension = "*.npy"
 
@@ -91,89 +93,108 @@ with st.sidebar:
                 st.warning('No data selected')
 
 # Data Selection
+def unpack(data_directory, first=False):
+    data = load_data(data_directory, 'Co', prominence=st.session_state['prominence'])
+    if first:
+        st.session_state['a'], st.session_state['k'] = data.optimise(threshold=0.001)
+        data.calibrate(st.session_state['a'], st.session_state['k'])
+        characterisation, table = data.characterise()
+        characterisation = characterisation[:, 0]
+        st.session_state['table'] = table
+        st.session_state['characterisation'] = characterisation
+        st.session_state['peaks'] = data.peaks
+    else:
+        data.calibrate(st.session_state['a'], st.session_state['k'])  
+        
+    df = pd.DataFrame({'time': data.time,
+                       'mass': data.mass,
+                       'mass_element': data.mass_element,
+                       'voltage': data.voltage,
+                       'name': [data_directory[directory_length+6:]]*len(data.time)})
+    return df
+
 directory_length = len(st.session_state['directory'])
-selected_data = st.selectbox("Select Data", [file_name[directory_length:] for file_name in all_files])
-if selected_data != None:
-    selected_data = st.session_state['directory'] + selected_data
+selected_data = st.multiselect("Select Data", [file_name[directory_length+6:] for file_name in all_files])
+if selected_data != []:
+    for i, data in enumerate(selected_data):
+        selected_data[i] = all_files[0][:directory_length+6] + data
 
 if (selected_data != st.session_state['data_loc'] or
     prominence != st.session_state['prominence']):   # New data selected
     st.session_state['data_loc'] = selected_data
     st.session_state['prominence'] = prominence
-    st.session_state['data'] = load_data(selected_data, 'Co', prominence=st.session_state['prominence'])
-    st.session_state['a'], st.session_state['k'] = st.session_state['data'].optimise(threshold=0.001)
+
+    for i, data in enumerate(selected_data):
+        if i == 0:
+            st.session_state['dataframe'] = unpack(data, True)
+        else:
+            st.session_state['dataframe'] = pd.concat([st.session_state['dataframe'], unpack(data)])
       
 
 
 # Plot
-data = st.session_state['data']
+def generate_fig():
+    def prepare_axes(xlabel, ylabel):
+        fig.update_layout(
+            xaxis_title = xlabel,
+            yaxis_title = ylabel,
+            legend = dict(
+                yanchor="bottom",
+                y=1.02,
+                xanchor="left",
+                orientation="h"),
+            legend_title_text='',
+            xaxis=dict(showgrid=True))
+        
+    def show_peak_lines(index):
+        if peak_detection or show_tag:
+            for i, peak in enumerate(st.session_state['peaks']):
+                dataframe = st.session_state['dataframe']
+                x_axis = dataframe[index]
+                x_axis = x_axis[dataframe['name'] == dataframe['name'].iloc[0]]
+                if 'Ar' in st.session_state['characterisation'][i] and show_tag:
+                    fig.add_vline(x_axis.iloc[peak], line_dash="dash", line_color='blue', opacity=0.25)
+                elif peak_detection:
+                    fig.add_vline(x_axis.iloc[peak], line_dash='dot', line_color='grey', opacity=0.25)
 
-def plot():
-    if spectrum_type == 'Time':
-        fig = px.line(x=data.time, y=data.voltage)
-        fig.update_layout(
-            xaxis_title = 'time (us)',
-            yaxis_title = 'accumulated voltage (V)')
-            
-        if peak_detection or show_tag:
-            for i, peak in enumerate(data.peaks):
-                if 'Ar' in characterisation[i] and show_tag:
-                    fig.add_vline(data.time[peak], line_dash="dash", line_color='blue', opacity=0.25)
-                elif peak_detection:
-                        fig.add_vline(data.time[peak], line_dash='dot', line_color='grey', opacity=0.25)
-        
-    elif spectrum_type == 'Mass (amu)':
-        fig = px.line(x=data.mass, y=data.voltage)
-        fig.update_layout(
-            xaxis_title = 'mass (amu)',
-            yaxis_title = 'accumulated voltage (V)')
-        
-        if peak_detection or show_tag:
-            for i, peak in enumerate(data.peaks):
-                if 'Ar' in characterisation[i] and show_tag:
-                    fig.add_vline(data.mass[peak], line_dash="dash", line_color='blue', opacity=0.25)
-                elif peak_detection:
-                    fig.add_vline(data.mass[peak], line_dash='dot', line_color='grey', opacity=0.25)
-    
+    if spectrum_type == 'time':
+        fig = px.line(st.session_state['dataframe'], x='time', y='voltage', color='name')
+        prepare_axes('time (us)', 'accumulated voltage (V)')
+        show_peak_lines(spectrum_type)
+    elif spectrum_type == 'mass':
+        fig = px.line(st.session_state['dataframe'], x='mass', y='voltage', color='name')
+        prepare_axes('mass (amu)', 'accumulated voltage (V)')
+        show_peak_lines(spectrum_type)
     else:
-        fig = px.line(x=data.mass_element, y=data.voltage)
-        fig.update_layout(
-            xaxis_title = 'mass (Co)',
-            yaxis_title = 'accumulated voltage (V)')
-        
-        if peak_detection or show_tag:
-            for i, peak in enumerate(data.peaks):
-                if 'Ar' in characterisation[i] and show_tag:
-                    fig.add_vline(data.mass_element[peak], line_dash="dash", line_color='blue', opacity=0.25)
-                elif peak_detection:
-                    fig.add_vline(data.mass_element[peak], line_dash='dot', line_color='grey', opacity=0.25)
-    fig.update_layout(xaxis=dict(showgrid=True))
+        fig = px.line(st.session_state['dataframe'], x='mass_element', y='voltage', color='name')
+        prepare_axes('mass (Co)', 'accumulated voltage (V)')
+        show_peak_lines(spectrum_type)
+    
+    if pointer:
+        fig.add_vline(pointer_value, line_dash="dash", line_color="red")
+    
     return fig
 
-
-if data != None:
-    data.calibrate(st.session_state['a'], st.session_state['k'])  
-    characterisation, table = data.characterise()
-    characterisation = characterisation[:, 0]
-
+    
+if selected_data != []:
     ## Input
-    col1, col2 = st.columns([2, 1])
+    col1, col2 = st.columns([3, 1])
     with col2:
+        SPECTRUM_DICT = {'Time': 'time',
+                         'Mass (amu)': 'mass',
+                         'Mass (Co)': 'mass_element'}
         spectrum_type = st.selectbox('Spectrum Type', ['Time', 'Mass (amu)', 'Mass (Co)'])
+        spectrum_type = SPECTRUM_DICT[spectrum_type]
         peak_detection = st.toggle('Peak Detection')
         show_tag = st.toggle('Show Tag')
-        fig = plot()
         with st.container(border = True):
             pointer = st.toggle('Pointer')
-            if spectrum_type == 'Time':
-                pointer_value = st.number_input('Pointer', data.time[0], data.time[-1], label_visibility='collapsed')
-            elif spectrum_type == 'Mass (amu)':
-                pointer_value = st.number_input('Pointer', data.mass[0], data.mass[-1], label_visibility='collapsed')
-            else:
-                pointer_value = st.number_input('Pointer', data.mass_element[0], data.mass_element[-1], label_visibility='collapsed')
-        if pointer:
-            fig.add_vline(pointer_value, line_dash="dash", line_color="red")
+            pointer_value = st.number_input('Pointer',
+                                            st.session_state['dataframe'][spectrum_type].iloc[0], 
+                                            st.session_state['dataframe'][spectrum_type].iloc[-1], 
+                                            label_visibility='collapsed')  
     with col1:
+        fig = generate_fig()
         st.plotly_chart(fig)
 
     # Table
@@ -183,7 +204,7 @@ if data != None:
     pd.set_option('display.max_rows', None)
     pd.options.display.float_format = '{:,.5f}'.format
     try:
-        st.dataframe(table.iloc[:, :max_columns])
+        st.dataframe(st.session_state['table'].iloc[:, :max_columns])
     except:
         pass
 
