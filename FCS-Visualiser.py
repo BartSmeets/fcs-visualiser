@@ -1,8 +1,6 @@
 # Imports
 import configparser
-from IPython.display import display
 import streamlit as st
-import streamlit.components.v1 as components
 import tkinter as tk
 from tkinter import filedialog
 import glob
