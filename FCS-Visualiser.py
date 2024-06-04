@@ -96,13 +96,18 @@ def unpack(data_directory, first=False):
     data = load_data(data_directory, 'Co', prominence=st.session_state['prominence'])
     if first:
         st.session_state['a'], st.session_state['k'] = data.optimise(threshold=0.001)
-    data.calibrate(st.session_state['a'], st.session_state['k'])  
-    characterisation, table = data.characterise()
-    characterisation = characterisation[:, 0]
-    if 'table' not in st.session_state:
+        data.calibrate(st.session_state['a'], st.session_state['k'])
+        characterisation, table = data.characterise()
+        characterisation = characterisation[:, 0]
         st.session_state['table'] = table
         st.session_state['characterisation'] = characterisation
+        st.session_state['peaks'] = data.peaks
+    else:
+        data.calibrate(st.session_state['a'], st.session_state['k'])  
+        
     df = pd.DataFrame({'time': data.time,
+                       'mass': data.mass,
+                       'mass_element': data.mass_element,
                        'voltage': data.voltage,
                        'name': [data_directory[directory_length:]]*len(data.time)})
     return df
@@ -119,7 +124,6 @@ if (selected_data != st.session_state['data_loc'] or
     st.session_state['prominence'] = prominence
 
     for i, data in enumerate(selected_data):
-        print(i)
         if i == 0:
             st.session_state['dataframe'] = unpack(data, True)
         else:
@@ -129,51 +133,43 @@ if (selected_data != st.session_state['data_loc'] or
 
 # Plot
 def plot():
-    if spectrum_type == 'Time':
-        fig = px.line(st.session_state['dataframe'],x='time', y='voltage', color='name')
+    def prepare_axes(xlabel, ylabel):
         fig.update_layout(
-            xaxis_title = 'time (us)',
-            yaxis_title = 'accumulated voltage (V)',
+            xaxis_title = xlabel,
+            yaxis_title = ylabel,
             legend = dict(
                 yanchor="bottom",
                 y=1.02,
                 xanchor="left",
                 orientation="h"),
-            legend_title_text='')
-            
-        # if peak_detection or show_tag:
-        #     for i, peak in enumerate(data.peaks):
-        #         if 'Ar' in st.session_state['characterisation'] and show_tag:
-        #             fig.add_vline(st.session_state['time'][peak], line_dash="dash", line_color='blue', opacity=0.25)
-        #         elif peak_detection:
-        #                 fig.add_vline(st.session_state['time'][peak], line_dash='dot', line_color='grey', opacity=0.25)
+            legend_title_text='',
+            xaxis=dict(showgrid=True))
         
-    # elif spectrum_type == 'Mass (amu)':
-    #     fig = px.line(x=st.session_state['mass'], y=st.session_state['voltage'])
-    #     fig.update_layout(
-    #         xaxis_title = 'mass (amu)',
-    #         yaxis_title = 'accumulated voltage (V)')
-        
-    #     if peak_detection or show_tag:
-    #         for i, peak in enumerate(data.peaks):
-    #             if 'Ar' in st.session_state['characterisation'] and show_tag:
-    #                 fig.add_vline(st.session_state['mass'][peak], line_dash="dash", line_color='blue', opacity=0.25)
-    #             elif peak_detection:
-    #                 fig.add_vline(st.session_state['mass'][peak], line_dash='dot', line_color='grey', opacity=0.25)
+    def show_peak_lines(index):
+        if peak_detection or show_tag:
+            for i, peak in enumerate(st.session_state['peaks']):
+                dataframe = st.session_state['dataframe']
+                x_axis = dataframe[index]
+                x_axis = x_axis[dataframe['name'] == dataframe['name'].iloc[0]]
+                if 'Ar' in st.session_state['characterisation'][i] and show_tag:
+                    fig.add_vline(x_axis.iloc[peak], line_dash="dash", line_color='blue', opacity=0.25)
+                elif peak_detection:
+                    fig.add_vline(x_axis.iloc[peak], line_dash='dot', line_color='grey', opacity=0.25)
+
+
+    if spectrum_type == 'Time':
+        fig = px.line(st.session_state['dataframe'], x='time', y='voltage', color='name')
+        prepare_axes('time (us)', 'accumulated voltage (V)')
+        show_peak_lines('time')
+    elif spectrum_type == 'Mass (amu)':
+        fig = px.line(st.session_state['dataframe'], x='mass', y='voltage', color='name')
+        prepare_axes('mass (amu)', 'accumulated voltage (V)')
+        show_peak_lines('mass')
+    else:
+        fig = px.line(st.session_state['dataframe'], x='mass_element', y='voltage', color='name')
+        prepare_axes('mass (Co)', 'accumulated voltage (V)')
+        show_peak_lines('mass_element')
     
-    # else:
-    #     fig = px.line(x=st.session_state['mass_element'], y=st.session_state['voltage'])
-    #     fig.update_layout(
-    #         xaxis_title = 'mass (Co)',
-    #         yaxis_title = 'accumulated voltage (V)')
-        
-    #     if peak_detection or show_tag:
-    #         for i, peak in enumerate(data.peaks):
-    #             if 'Ar' in st.session_state['characterisation'] and show_tag:
-    #                 fig.add_vline(st.session_state['mass_element'][peak], line_dash="dash", line_color='blue', opacity=0.25)
-    #             elif peak_detection:
-    #                 fig.add_vline(st.session_state['mass_element'][peak], line_dash='dot', line_color='grey', opacity=0.25)
-    fig.update_layout(xaxis=dict(showgrid=True))
     return fig
 
 
@@ -183,8 +179,8 @@ if selected_data != []:
     with col2:
         pass
         spectrum_type = st.selectbox('Spectrum Type', ['Time', 'Mass (amu)', 'Mass (Co)'])
-        # peak_detection = st.toggle('Peak Detection')
-        # show_tag = st.toggle('Show Tag')
+        peak_detection = st.toggle('Peak Detection')
+        show_tag = st.toggle('Show Tag')
         fig = plot()
         # with st.container(border = True):
         #     pointer = st.toggle('Pointer')
@@ -206,7 +202,7 @@ if selected_data != []:
     pd.set_option('display.max_rows', None)
     pd.options.display.float_format = '{:,.5f}'.format
     try:
-        st.dataframe(table.iloc[:, :max_columns])
+        st.dataframe(st.session_state['table'].iloc[:, :max_columns])
     except:
         pass
 
