@@ -39,7 +39,10 @@ if 'data_loc' not in st.session_state:
     st.session_state['data_loc'] = []
 if 'dataframe' not in st.session_state:
     st.session_state['dataframe'] = pd.DataFrame({'time': [],
-                                                  'mass': []})
+                                                'mass': [],
+                                                'mass_element': [],
+                                                'voltage': [],
+                                                'name': []})
     
 
 file_extension = "*.npy"
@@ -132,7 +135,7 @@ if (selected_data != st.session_state['data_loc'] or
 
 
 # Plot
-def plot():
+def generate_fig():
     def prepare_axes(xlabel, ylabel):
         fig.update_layout(
             xaxis_title = xlabel,
@@ -156,43 +159,44 @@ def plot():
                 elif peak_detection:
                     fig.add_vline(x_axis.iloc[peak], line_dash='dot', line_color='grey', opacity=0.25)
 
-
-    if spectrum_type == 'Time':
+    if spectrum_type == 'time':
         fig = px.line(st.session_state['dataframe'], x='time', y='voltage', color='name')
         prepare_axes('time (us)', 'accumulated voltage (V)')
-        show_peak_lines('time')
-    elif spectrum_type == 'Mass (amu)':
+        show_peak_lines(spectrum_type)
+    elif spectrum_type == 'mass':
         fig = px.line(st.session_state['dataframe'], x='mass', y='voltage', color='name')
         prepare_axes('mass (amu)', 'accumulated voltage (V)')
-        show_peak_lines('mass')
+        show_peak_lines(spectrum_type)
     else:
         fig = px.line(st.session_state['dataframe'], x='mass_element', y='voltage', color='name')
         prepare_axes('mass (Co)', 'accumulated voltage (V)')
-        show_peak_lines('mass_element')
+        show_peak_lines(spectrum_type)
+    
+    if pointer:
+        fig.add_vline(pointer_value, line_dash="dash", line_color="red")
     
     return fig
 
-
+    
 if selected_data != []:
     ## Input
     col1, col2 = st.columns([3, 1])
     with col2:
-        pass
+        SPECTRUM_DICT = {'Time': 'time',
+                         'Mass (amu)': 'mass',
+                         'Mass (Co)': 'mass_element'}
         spectrum_type = st.selectbox('Spectrum Type', ['Time', 'Mass (amu)', 'Mass (Co)'])
+        spectrum_type = SPECTRUM_DICT[spectrum_type]
         peak_detection = st.toggle('Peak Detection')
         show_tag = st.toggle('Show Tag')
-        fig = plot()
-        # with st.container(border = True):
-        #     pointer = st.toggle('Pointer')
-        #     if spectrum_type == 'Time':
-        #         pointer_value = st.number_input('Pointer', st.session_state['time'][0][0], st.session_state['time'][0][-1], label_visibility='collapsed')
-        #     elif spectrum_type == 'Mass (amu)':
-        #         pointer_value = st.number_input('Pointer', st.session_state['mass'][0][0], st.session_state['mass'][0][-1], label_visibility='collapsed')
-        #     else:
-        #         pointer_value = st.number_input('Pointer', st.session_state['mass_element'][0][0], st.session_state['mass_element'][0][-1], label_visibility='collapsed')
-        # if pointer:
-        #     fig.add_vline(pointer_value, line_dash="dash", line_color="red")
+        with st.container(border = True):
+            pointer = st.toggle('Pointer')
+            pointer_value = st.number_input('Pointer',
+                                            st.session_state['dataframe'][spectrum_type].iloc[0], 
+                                            st.session_state['dataframe'][spectrum_type].iloc[-1], 
+                                            label_visibility='collapsed')  
     with col1:
+        fig = generate_fig()
         st.plotly_chart(fig)
 
     # Table
