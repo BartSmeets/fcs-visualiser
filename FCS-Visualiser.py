@@ -112,14 +112,14 @@ def unpack(data_directory, first=False):
                        'mass': data.mass,
                        'mass_element': data.mass_element,
                        'voltage': data.voltage,
-                       'name': [data_directory[directory_length:]]*len(data.time)})
+                       'name': [data_directory[directory_length+6:]]*len(data.time)})
     return df
 
 directory_length = len(st.session_state['directory'])
-selected_data = st.multiselect("Select Data", [file_name[directory_length:] for file_name in all_files])
+selected_data = st.multiselect("Select Data", [file_name[directory_length+6:] for file_name in all_files])
 if selected_data != []:
     for i, data in enumerate(selected_data):
-        selected_data[i] = st.session_state['directory'] + data
+        selected_data[i] = all_files[0][:directory_length+6] + data
 
 if (selected_data != st.session_state['data_loc'] or
     prominence != st.session_state['prominence']):   # New data selected
