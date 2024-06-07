@@ -93,8 +93,9 @@ with st.sidebar:
                 st.warning('No data selected')
 
 # Data Selection
-def unpack(data_directory, first=False):
-    data = load_data(data_directory, 'Co', prominence=st.session_state['prominence'])
+def gen_df(data_directory, first=False):
+    init_param = [st.session_state['a'], st.session_state['k']]
+    data = load_data(data_directory, 'Co', init_param, prominence=st.session_state['prominence'])
     if first:
         st.session_state['a'], st.session_state['k'] = data.optimise(threshold=0.001)
         data.calibrate(st.session_state['a'], st.session_state['k'])
@@ -114,7 +115,8 @@ def unpack(data_directory, first=False):
     return df
 
 directory_length = len(st.session_state['directory'])
-selected_data = st.multiselect("Select Data", [file_name[directory_length+6:] for file_name in all_files])
+selected_data = st.multiselect("Select Data", 
+                               [file_name[directory_length+6:] for file_name in all_files])
 if selected_data != []:
     for i, data in enumerate(selected_data):
         selected_data[i] = all_files[0][:directory_length+6] + data
@@ -126,9 +128,9 @@ if (selected_data != st.session_state['data_loc'] or
 
     for i, data in enumerate(selected_data):
         if i == 0:
-            st.session_state['dataframe'] = unpack(data, True)
+            st.session_state['dataframe'] = gen_df(data, True)
         else:
-            st.session_state['dataframe'] = pd.concat([st.session_state['dataframe'], unpack(data)])
+            st.session_state['dataframe'] = pd.concat([st.session_state['dataframe'], gen_df(data)])
       
 
 
