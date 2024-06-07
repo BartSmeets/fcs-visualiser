@@ -1,5 +1,6 @@
 __*__.ipynb
 defaults.ini
+*__backup__*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
