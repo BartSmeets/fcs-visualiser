@@ -40,6 +40,7 @@ if 'dataframe' not in st.session_state:
                                                 'mass': [],
                                                 'mass_element': [],
                                                 'voltage': [],
+                                                'norm': [],
                                                 'name': []})  
 file_extension = "*.npy"
 
@@ -94,6 +95,7 @@ def gen_df(optimise=True):
                                                         'mass': data.mass,
                                                         'mass_element': data.mass_element,
                                                         'voltage': data.voltage,
+                                                        'norm': data.norm,
                                                         'name': [name]*len(data.time)})
         else:
             data.calibrate(st.session_state['a'], st.session_state['k'])
@@ -101,6 +103,7 @@ def gen_df(optimise=True):
                         'mass': data.mass,
                         'mass_element': data.mass_element,
                         'voltage': data.voltage,
+                        'norm': data.norm,
                         'name': [name]*len(data.time)})
             st.session_state['dataframe'] = pd.concat([st.session_state['dataframe'], df])
             
@@ -159,17 +162,22 @@ def generate_fig():
                     fig.add_vline(x_axis.iloc[peak], line_dash="dash", line_color='blue', opacity=0.25)
                 elif peak_detection:
                     fig.add_vline(x_axis.iloc[peak], line_dash='dot', line_color='grey', opacity=0.25)
-
+    
+    if normalise:
+        y_axis = 'norm'
+    else:
+        y_axis = 'voltage'
+    
     if spectrum_type == 'time':
-        fig = px.line(st.session_state['dataframe'], x='time', y='voltage', color='name')
+        fig = px.line(st.session_state['dataframe'], x='time', y=y_axis, color='name')
         prepare_axes('time (us)', 'accumulated voltage (V)')
         show_peak_lines(spectrum_type)
     elif spectrum_type == 'mass':
-        fig = px.line(st.session_state['dataframe'], x='mass', y='voltage', color='name')
+        fig = px.line(st.session_state['dataframe'], x='mass', y=y_axis, color='name')
         prepare_axes('mass (amu)', 'accumulated voltage (V)')
         show_peak_lines(spectrum_type)
     else:
-        fig = px.line(st.session_state['dataframe'], x='mass_element', y='voltage', color='name')
+        fig = px.line(st.session_state['dataframe'], x='mass_element', y=y_axis, color='name')
         prepare_axes('mass (Co)', 'accumulated voltage (V)')
         show_peak_lines(spectrum_type)
     
@@ -190,6 +198,7 @@ if st.session_state['data'] != []:
         spectrum_type = SPECTRUM_DICT[spectrum_type]
         peak_detection = st.toggle('Peak Detection')
         show_tag = st.toggle('Show Tag')
+        normalise = st.toggle('Normalise')
         with st.container(border = True):
             pointer = st.toggle('Pointer')
             pointer_value = st.number_input('Pointer',
