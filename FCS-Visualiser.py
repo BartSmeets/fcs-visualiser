@@ -77,7 +77,7 @@ with st.sidebar:
         prominence_steps = np.concatenate((dummy/1000, dummy/100, dummy/10, dummy, dummy*10))
 
         st.write("## Peak Detection & Mass Calibration")
-        prominence = st.select_slider("Peak Prominence", options=prominence_steps, value=st.session_state['prominence'])
+        st.session_state['prominence'] = st.select_slider("Peak Prominence", options=prominence_steps, value=1)
         st.write('### Mass Calibration')
         st.write('$m = a(t-k)^2$')
 
