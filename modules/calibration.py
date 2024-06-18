@@ -12,7 +12,7 @@ class load_data:
     Provides intuitive access to the different axes and properties (e.g. self.time instead of data[:, 0])
     '''
 
-    def __init__(self, file, element, prominence=0.2, baseline_end=True):
+    def __init__(self, file, element, init_param, prominence=0.2, baseline_end=True):
         '''
         Load the data and perform a first calibration
 
@@ -43,7 +43,7 @@ class load_data:
         ### Prepare local datastructure
         atom = np.zeros(len(self.peaks))
         dimer = np.zeros(len(self.peaks))
-        self.calibrate()    # Estimated calibration for identifying the atom and dimer using default parameters
+        self.calibrate(*init_param)    # Estimated calibration for identifying the atom and dimer using default parameters
         ### Identify the candidate peaks -> peaks nearby 1 element mass and 2 element masses
         atom_options = np.abs(self.mass_element[self.peaks] - 1) < 0.25
         dimer_options = np.abs(self.mass_element[self.peaks] - 2) < 0.25

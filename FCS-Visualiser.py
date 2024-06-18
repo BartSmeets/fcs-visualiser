@@ -19,8 +19,6 @@ defaults = configparser.ConfigParser()
 defaults.read('defaults.ini')
 if  defaults.read('defaults.ini') == []:
     modules.setup(defaults)
-    
-
 
 # Initialise session states
 if 'directory' not in st.session_state:
@@ -32,21 +30,21 @@ if 'a' not in st.session_state:
 if 'k' not in st.session_state:
     st.session_state['k'] = float(defaults.get('defaults', 'k'))
 if 'data' not in st.session_state:
-    st.session_state['data'] = None
-if 'data_loc' not in st.session_state:
-    st.session_state['data_loc'] = []
+    st.session_state['data'] = []
+if 'old_data' not in st.session_state:
+    st.session_state['old_data'] = []
+if 'calibration_data' not in st.session_state:
+    st.session_state['calibration_data'] = None
 if 'dataframe' not in st.session_state:
     st.session_state['dataframe'] = pd.DataFrame({'time': [],
                                                 'mass': [],
                                                 'mass_element': [],
                                                 'voltage': [],
-                                                'name': []})
-    
-
+                                                'norm': [],
+                                                'name': []})  
 file_extension = "*.npy"
 
-
-# Side Bar
+# Folder selection in sidebar
 def select_folder():
     root = tk.Tk()
     root.attributes('-topmost', True)
@@ -68,68 +66,76 @@ with st.sidebar:
             file_location = st.session_state['directory'] + "//*" + file_extension
             all_files = glob.glob(file_location)
     st.session_state['directory'] = st.text_input("Directory", value=st.session_state['directory'])
+    directory_length = len(st.session_state['directory'])
     file_location = st.session_state['directory'] + "//*" + file_extension
     all_files = glob.glob(file_location)
     	
-    # Prominence Slider and Calibration Parameters
+
+# Data Selection
+# Define data structure
+def gen_df(optimise=True):   
+    init_param = [st.session_state['a'], st.session_state['k']]
+    for i, name in enumerate(st.session_state['data']):
+        directory = all_files[0][:directory_length+6] + name
+        try:
+            data = load_data(directory, 'Co', init_param, prominence=st.session_state['prominence'])
+        except OSError:
+            return
+        if i==0:
+            if optimise:
+                st.session_state['a'], st.session_state['k'] = data.optimise(threshold=0.001)                
+            data.calibrate(st.session_state['a'], st.session_state['k'])
+            characterisation, table = data.characterise()
+            characterisation = characterisation[:, 0]
+            st.session_state['table'] = table
+            st.session_state['characterisation'] = characterisation
+            st.session_state['peaks'] = data.peaks
+            st.session_state['calibration_data'] = data
+            st.session_state['dataframe'] = pd.DataFrame({'time': data.time,
+                                                        'mass': data.mass,
+                                                        'mass_element': data.mass_element,
+                                                        'voltage': data.voltage,
+                                                        'norm': data.norm,
+                                                        'name': [name]*len(data.time)})
+        else:
+            data.calibrate(st.session_state['a'], st.session_state['k'])
+            df = pd.DataFrame({'time': data.time,
+                        'mass': data.mass,
+                        'mass_element': data.mass_element,
+                        'voltage': data.voltage,
+                        'norm': data.norm,
+                        'name': [name]*len(data.time)})
+            st.session_state['dataframe'] = pd.concat([st.session_state['dataframe'], df])
+            
+# Prominence Slider and Calibration Parameters
+with st.sidebar:
     with st.container(border=True):
         dummy = np.arange(1, 10, 1)
         prominence_steps = np.concatenate((dummy/1000, dummy/100, dummy/10, dummy, dummy*10))
 
         st.write("## Peak Detection & Mass Calibration")
-        prominence = st.select_slider("Peak Prominence", options=prominence_steps, value=st.session_state['prominence'])
+        st.session_state['prominence'] = st.select_slider("Peak Prominence", options=prominence_steps, value=0.5)
         st.write('### Mass Calibration')
         st.write('$m = a(t-k)^2$')
 
         col1, col2 = st.columns(2)
         with col1:
             st.session_state['a'] = st.number_input("a", min_value=0.0, step=1e-8, value=st.session_state['a'], format='%.8f')
+            if st.button('Auto-Calibrate'):
+                try:
+                    st.session_state['a'], st.session_state['k'] = st.session_state['calibration_data'].optimise(threshold=0.001)
+                except:
+                    st.warning('No data selected')
         with col2:
-            st.session_state['k'] = st.number_input("k", min_value=0.0, step=1e-8, value=st.session_state['k'], format='%.8f')
-        if st.button('Auto-Calibrate'):
-            try:
-                st.session_state['a'], st.session_state['k'] = st.session_state['data'].optimise(threshold=0.001)
-            except:
-                st.warning('No data selected')
+            st.session_state['k'] = st.number_input("k", step=1e-8, value=st.session_state['k'], format='%.8f')
+            if st.button('Apply'):
+                gen_df(optimise = False)
+st.session_state['data'] = st.multiselect("Select Data", 
+                [file_name[directory_length+6:] for file_name in all_files])
 
-# Data Selection
-def unpack(data_directory, first=False):
-    data = load_data(data_directory, 'Co', prominence=st.session_state['prominence'])
-    if first:
-        st.session_state['a'], st.session_state['k'] = data.optimise(threshold=0.001)
-        data.calibrate(st.session_state['a'], st.session_state['k'])
-        characterisation, table = data.characterise()
-        characterisation = characterisation[:, 0]
-        st.session_state['table'] = table
-        st.session_state['characterisation'] = characterisation
-        st.session_state['peaks'] = data.peaks
-    else:
-        data.calibrate(st.session_state['a'], st.session_state['k'])  
-        
-    df = pd.DataFrame({'time': data.time,
-                       'mass': data.mass,
-                       'mass_element': data.mass_element,
-                       'voltage': data.voltage,
-                       'name': [data_directory[directory_length+6:]]*len(data.time)})
-    return df
-
-directory_length = len(st.session_state['directory'])
-selected_data = st.multiselect("Select Data", [file_name[directory_length+6:] for file_name in all_files])
-if selected_data != []:
-    for i, data in enumerate(selected_data):
-        selected_data[i] = all_files[0][:directory_length+6] + data
-
-if (selected_data != st.session_state['data_loc'] or
-    prominence != st.session_state['prominence']):   # New data selected
-    st.session_state['data_loc'] = selected_data
-    st.session_state['prominence'] = prominence
-
-    for i, data in enumerate(selected_data):
-        if i == 0:
-            st.session_state['dataframe'] = unpack(data, True)
-        else:
-            st.session_state['dataframe'] = pd.concat([st.session_state['dataframe'], unpack(data)])
-      
+if st.session_state['data'] != st.session_state['old_data']:
+    st.session_state['old_data'] = st.session_state['data']
+    gen_df(optimise=True)
 
 
 # Plot
@@ -156,17 +162,22 @@ def generate_fig():
                     fig.add_vline(x_axis.iloc[peak], line_dash="dash", line_color='blue', opacity=0.25)
                 elif peak_detection:
                     fig.add_vline(x_axis.iloc[peak], line_dash='dot', line_color='grey', opacity=0.25)
-
+    
+    if normalise:
+        y_axis = 'norm'
+    else:
+        y_axis = 'voltage'
+    
     if spectrum_type == 'time':
-        fig = px.line(st.session_state['dataframe'], x='time', y='voltage', color='name')
+        fig = px.line(st.session_state['dataframe'], x='time', y=y_axis, color='name')
         prepare_axes('time (us)', 'accumulated voltage (V)')
         show_peak_lines(spectrum_type)
     elif spectrum_type == 'mass':
-        fig = px.line(st.session_state['dataframe'], x='mass', y='voltage', color='name')
+        fig = px.line(st.session_state['dataframe'], x='mass', y=y_axis, color='name')
         prepare_axes('mass (amu)', 'accumulated voltage (V)')
         show_peak_lines(spectrum_type)
     else:
-        fig = px.line(st.session_state['dataframe'], x='mass_element', y='voltage', color='name')
+        fig = px.line(st.session_state['dataframe'], x='mass_element', y=y_axis, color='name')
         prepare_axes('mass (Co)', 'accumulated voltage (V)')
         show_peak_lines(spectrum_type)
     
@@ -176,7 +187,7 @@ def generate_fig():
     return fig
 
     
-if selected_data != []:
+if st.session_state['data'] != []:
     ## Input
     col1, col2 = st.columns([3, 1])
     with col2:
@@ -187,6 +198,7 @@ if selected_data != []:
         spectrum_type = SPECTRUM_DICT[spectrum_type]
         peak_detection = st.toggle('Peak Detection')
         show_tag = st.toggle('Show Tag')
+        normalise = st.toggle('Normalise')
         with st.container(border = True):
             pointer = st.toggle('Pointer')
             pointer_value = st.number_input('Pointer',
