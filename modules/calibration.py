@@ -3,6 +3,8 @@ import numpy as np
 import pandas as pd
 import scipy.signal as signal
 from scipy.optimize import fsolve, minimize
+from scipy import sparse
+from scipy.sparse.linalg import spsolve
 
 
 class load_data:
@@ -12,7 +14,7 @@ class load_data:
     Provides intuitive access to the different axes and properties (e.g. self.time instead of data[:, 0])
     '''
 
-    def __init__(self, file, element, init_param, prominence=0.2, baseline_end=True):
+    def __init__(self, file, element, init_param, prominence=0.2, lam=100, baseline_end=True, ALS_bool=False):
         '''
         Load the data and perform a first calibration
 
@@ -55,9 +57,37 @@ class load_data:
         self.dimer_peak = self.peaks[dimer.argmax()]
 
         # Baseline correction
+        def ALS(data, lam):
+            '''
+            Least Squares Smoothing
+            '''
+            def logistic(d):
+                m = np.mean(d[d<0])
+                sigma = np.std(d[d<0])
+                noemer = 1 + np.exp(2 * d - (-m + 2*sigma)/sigma)
+                return 1/noemer
+            
+            niter = 50
+            y = data.voltage
+            size = len(y)
+            D = sparse.diags([1, -2, 1], [0, -1, -2], shape=(size, size-2))   # Second order difference matrix
+            D = lam * D.dot(D.transpose())
+            w = np.ones(size)
+            W = sparse.spdiags(w, 0, size, size)
+            for i in range(niter):
+                W.setdiag(w)
+                z = spsolve(W + D, w*y)
+                w = 0 * (y >= z) + logistic(y-z) * (y < z)
+
+            return z
+
+
         number = int(len(self.time)/10)  # Number of data points to consider for the baseline
-        baseline = np.average(self.voltage[-number:])
-        self.voltage -= baseline
+        if ALS_bool:
+            self.baseline = ALS(self, lam)
+        else:
+            self.baseline = np.average(self.voltage[-number:])
+        self.voltage -= self.baseline
         self.norm = self.voltage / np.sum(self.voltage)
 
         # Mass calibration based on atom and dimer
@@ -66,7 +96,7 @@ class load_data:
         ##  a*(ToF_dimer - k)**2 - 2*m_Co = 0
         ToF = np.array([self.time[self.atom_peak], self.time[self.dimer_peak]]) # Create time vector
         solve = lambda x: x[0] * (ToF - x[1])**2 - np.array([1., 2.])*MASS_ELEMENT  # Define system of equations
-        G, t_off = fsolve(solve, x0=[0.09949062, 0.23745731])
+        G, t_off = fsolve(solve, x0=init_param)
         self.p0 = [G, t_off]
         self.calibrate(G, t_off)
         
