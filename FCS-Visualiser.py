@@ -140,7 +140,7 @@ def save():
         df = st.session_state['dataframe']
         df = df[df['name'] == df['name']]
         to_save = df[['time', 'voltage']]
-        to_save['voltage'] = -to_save['voltage']
+        to_save.loc[:, 'voltage'] = -to_save['voltage']
         np.save(directory + name + '.npy', to_save.to_numpy())
 
 
