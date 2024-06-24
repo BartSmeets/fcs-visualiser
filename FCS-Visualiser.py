@@ -9,6 +9,7 @@ import modules
 import numpy as np
 import pandas as pd 
 import plotly.express as px
+import os.path
 
 # Page Config
 st.set_page_config(
@@ -122,7 +123,29 @@ def optimise():
     except AttributeError:
         st.warning('No data selected')
 
+# Save Data
+def save():
+    for name in st.session_state['data']:
+        # Initialise filename
+        directory = all_files[0][:directory_length+6]
+        name = name[:-4] + '_adj'
+        clean_name = name
+        i = 0
+        ## Find unique file name
+        while os.path.isfile(directory + name + '.npy'):
+            name = clean_name + '_' + str(i)
+            i += 1
+
+        # Select data from dataframe
+        df = st.session_state['dataframe']
+        df = df[df['name'] == df['name']]
+        to_save = df[['time', 'voltage']]
+        to_save['voltage'] = -to_save['voltage']
+        np.save(directory + name + '.npy', to_save.to_numpy())
+
+
 with st.sidebar:
+    # Peak Detection and Mass Calibration
     with st.container(border=True):
         dummy = np.arange(1, 10, 1)
         prominence_steps = np.concatenate((dummy/1000, dummy/100, dummy/10, dummy, dummy*10))
@@ -141,6 +164,7 @@ with st.sidebar:
             st.session_state['k'] = st.number_input("k", step=1e-8, value=st.session_state['k'], format='%.8f')
             st.button('Apply', on_click=gen_df)
 
+    # Baseline Correction
     with st.container(border=True):
         st.write("## Baseline Correction")
         options = ['No selection']
@@ -154,8 +178,12 @@ with st.sidebar:
             st.session_state['baseline'] = baseline
 
         multiplier = st.number_input('Multiplier', value=1.)
-        lam = 10**st.select_slider('$\lambda$ ($10^{x}$)', np.arange(0, 12.1, 1), value=9)
-        st.button('Apply', key=1, on_click=gen_df)
+        lam = 10**st.select_slider(r'$\lambda$ ($10^{x}$)', np.arange(0, 12.1, 1), value=9)
+        col1, col2 = st.columns(2)
+        with col1:
+            st.button('Apply', key=1, on_click=gen_df)
+        with col2:
+            st.button('Save', on_click=save)
 
 # Actual data selection
 st.session_state['data'] = st.multiselect("Select Data", [file_name[directory_length+6:] for file_name in all_files])
