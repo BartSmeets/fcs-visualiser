@@ -3,6 +3,8 @@ import numpy as np
 import pandas as pd
 import scipy.signal as signal
 from scipy.optimize import fsolve, minimize
+from scipy import sparse
+from scipy.sparse.linalg import spsolve
 
 
 class load_data:
@@ -12,7 +14,7 @@ class load_data:
     Provides intuitive access to the different axes and properties (e.g. self.time instead of data[:, 0])
     '''
 
-    def __init__(self, file, element, init_param, prominence=0.2, baseline_end=True):
+    def __init__(self, file, element, init_param, prominence=0.2, lam=1e9, multiplier=1, baseline_data=None):
         '''
         Load the data and perform a first calibration
 
@@ -36,55 +38,44 @@ class load_data:
         time = load[:, 0] * 1e6    # us
         self.voltage = -load[time>=0, 1]
         self.time = time[time>=0]
-
-        # Find peaks
-        self.peaks, properties = signal.find_peaks(self.voltage, prominence=prominence, height=3/4*prominence)
-        ## Identify atom and dimer
-        ### Prepare local datastructure
-        atom = np.zeros(len(self.peaks))
-        dimer = np.zeros(len(self.peaks))
-        self.calibrate(*init_param)    # Estimated calibration for identifying the atom and dimer using default parameters
-        ### Identify the candidate peaks -> peaks nearby 1 element mass and 2 element masses
-        atom_options = np.abs(self.mass_element[self.peaks] - 1) < 0.25
-        dimer_options = np.abs(self.mass_element[self.peaks] - 2) < 0.25
-        ### Find the corresponding peak prominences
-        atom[atom_options] = properties['prominences'][atom_options]
-        dimer[dimer_options] = properties['prominences'][dimer_options]
-        ### The most prominenent peak is likely the atom or the dimer
-        self.atom_peak = self.peaks[atom.argmax()]
-        self.dimer_peak = self.peaks[dimer.argmax()]
-
+        self.peaks, self.properties = signal.find_peaks(self.voltage, prominence=prominence)
+        self.calibrate(*init_param)
         # Baseline correction
-        number = int(len(self.time)/10)  # Number of data points to consider for the baseline
-        baseline = np.average(self.voltage[-number:])
-        self.voltage -= baseline
+        if baseline_data != None:
+            def LSS(y, lam):
+                '''
+                Least Squares Smoothing
+                '''
+                size = len(y)
+                D = sparse.diags([1, -2, 1], [0, -1, -2], shape=(size, size-2))   # Second order difference matrix
+                D = lam * D.dot(D.transpose())
+                I = sparse.identity(size)
+                z = spsolve(I + D, y)
+                return z
+            
+            baseline = np.load(baseline_data)
+            baseline = -multiplier * baseline[time>=0, 1]
+            self.baseline = LSS(baseline, lam)
+            self.voltage = self.voltage - self.baseline
+        # Normalisation
         self.norm = self.voltage / np.sum(self.voltage)
-
-        # Mass calibration based on atom and dimer
-        ## Find the exact solution of the system of equations:
-        ##  a*(ToF_atom - k)**2 - 1*m_Co = 0
-        ##  a*(ToF_dimer - k)**2 - 2*m_Co = 0
-        ToF = np.array([self.time[self.atom_peak], self.time[self.dimer_peak]]) # Create time vector
-        solve = lambda x: x[0] * (ToF - x[1])**2 - np.array([1., 2.])*MASS_ELEMENT  # Define system of equations
-        G, t_off = fsolve(solve, x0=[0.09949062, 0.23745731])
-        self.p0 = [G, t_off]
-        self.calibrate(G, t_off)
-        
         return
 
-    def calibrate(self, G=0.09949062, t_off = 0.23745731):
+
+    def calibrate(self, G, t_off):
         '''
         Performs a mass calibration, i.e., convert the time axis into a mass axis
 
         ### ARGUMENTS:
-        - G (default=0.09548259): First order coefficient of the Taylor expansion
-        - t_off (default = 0.23805761): Time offset <- Inability to locate the exact extraction timing
+        - G: First order coefficient of the Taylor expansion
+        - t_off: Time offset <- Inability to locate the exact extraction timing
         '''
         self.mass = G * (self.time - t_off)**2
         self.mass_element = self.mass / MASS_ELEMENT
         return
 
-    def optimise(self, threshold=0.001):
+
+    def optimise(self, G0, t0, threshold=0.001):
         '''
         Performs an optimisation routine (minimise Chi^2) to determine the optimal calibration parameters
 
@@ -126,6 +117,21 @@ class load_data:
             chi2 = np.sum((self.mass[calibration_peaks] - calibration_mass)**2 / calibration_mass)
             return chi2
         
+        ## Identify atom and dimer
+        ### Prepare local datastructure
+        atom = np.zeros(len(self.peaks))
+        dimer = np.zeros(len(self.peaks))
+        
+        ### Identify the candidate peaks -> peaks nearby 1 element mass and 2 element masses
+        atom_options = np.abs(self.mass_element[self.peaks] - 1) < 0.25
+        dimer_options = np.abs(self.mass_element[self.peaks] - 2) < 0.25
+        ### Find the corresponding peak prominences
+        atom[atom_options] = self.properties['prominences'][atom_options]
+        dimer[dimer_options] = self.properties['prominences'][dimer_options]
+        ### The most prominenent peak is likely the atom or the dimer
+        self.atom_peak = self.peaks[atom.argmax()]
+        self.dimer_peak = self.peaks[dimer.argmax()]
+
         # Prepare calibration data
         ## Characterise each peak
         result, _ = self.characterise()
@@ -137,7 +143,6 @@ class load_data:
         calibration_peaks = self.peaks[mask]
 
         # Prepare G optimisation
-        [G0, t0] = self.p0
         to_del = np.zeros(len(calibration_peaks), dtype=bool)
         opt = minimize(chi2_G, x0=G0, args=(t0, calibration_peaks, calibration_mass))
         benchmark = opt.fun
@@ -215,6 +220,7 @@ class load_data:
         
         return G_opt[0], t_opt[0]
     
+
     def characterise(self, precision=0.01):
         '''
         Characterise the peaks
@@ -271,3 +277,8 @@ class load_data:
         max_result[:, 0] = matched_elements
         max_result[:, 1] = matched_similarity
         return max_result, df
+    
+
+    def normalise(self):
+        
+        return self.norm

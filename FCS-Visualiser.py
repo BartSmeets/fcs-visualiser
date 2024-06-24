@@ -9,6 +9,7 @@ import modules
 import numpy as np
 import pandas as pd 
 import plotly.express as px
+import os.path
 
 # Page Config
 st.set_page_config(
@@ -24,7 +25,7 @@ if  defaults.read('defaults.ini') == []:
 if 'directory' not in st.session_state:
     st.session_state['directory'] = defaults.get('defaults', 'directory')
 if 'prominence' not in st.session_state:
-    st.session_state['prominence'] = 0.5
+    st.session_state['prominence'] = 1
 if 'a' not in st.session_state:
     st.session_state['a'] = float(defaults.get('defaults', 'a'))
 if 'k' not in st.session_state:
@@ -35,13 +36,15 @@ if 'old_data' not in st.session_state:
     st.session_state['old_data'] = []
 if 'calibration_data' not in st.session_state:
     st.session_state['calibration_data'] = None
+if 'baseline' not in st.session_state:
+    st.session_state['baseline'] = None
 if 'dataframe' not in st.session_state:
     st.session_state['dataframe'] = pd.DataFrame({'time': [],
                                                 'mass': [],
                                                 'mass_element': [],
                                                 'voltage': [],
                                                 'norm': [],
-                                                'name': []})  
+                                                'name': []})
 file_extension = "*.npy"
 
 # Folder selection in sidebar
@@ -73,70 +76,122 @@ with st.sidebar:
 
 # Data Selection
 # Define data structure
-def gen_df(optimise=True):   
+def gen_df(): 
     init_param = [st.session_state['a'], st.session_state['k']]
-    for i, name in enumerate(st.session_state['data']):
+    st.session_state['dataframe'] = pd.DataFrame({'time': [],
+                                                'mass': [],
+                                                'mass_element': [],
+                                                'voltage': [],
+                                                'norm': [],
+                                                'name': []})  
+    for name in st.session_state['data']:
         directory = all_files[0][:directory_length+6] + name
+        data = load_data(directory, 'Co', init_param, prominence=st.session_state['prominence'], lam=lam, multiplier=multiplier, baseline_data=st.session_state['baseline'])
         try:
-            data = load_data(directory, 'Co', init_param, prominence=st.session_state['prominence'])
-        except OSError:
-            return
-        if i==0:
-            if optimise:
-                st.session_state['a'], st.session_state['k'] = data.optimise(threshold=0.001)                
-            data.calibrate(st.session_state['a'], st.session_state['k'])
-            characterisation, table = data.characterise()
-            characterisation = characterisation[:, 0]
-            st.session_state['table'] = table
-            st.session_state['characterisation'] = characterisation
-            st.session_state['peaks'] = data.peaks
-            st.session_state['calibration_data'] = data
-            st.session_state['dataframe'] = pd.DataFrame({'time': data.time,
-                                                        'mass': data.mass,
-                                                        'mass_element': data.mass_element,
-                                                        'voltage': data.voltage,
-                                                        'norm': data.norm,
-                                                        'name': [name]*len(data.time)})
-        else:
-            data.calibrate(st.session_state['a'], st.session_state['k'])
+            data = load_data(directory, 'Co', init_param, prominence=st.session_state['prominence'], lam=lam, multiplier=multiplier, baseline_data=st.session_state['baseline'])
             df = pd.DataFrame({'time': data.time,
                         'mass': data.mass,
                         'mass_element': data.mass_element,
                         'voltage': data.voltage,
                         'norm': data.norm,
                         'name': [name]*len(data.time)})
-            st.session_state['dataframe'] = pd.concat([st.session_state['dataframe'], df])
+        except OSError:
+            return
+        
+        if name == st.session_state['data'][0]:
+            characterisation, table = data.characterise()
+            characterisation = characterisation[:, 0]
+            st.session_state['table'] = table
+            st.session_state['characterisation'] = characterisation
+            st.session_state['peaks'] = data.peaks
+            st.session_state['calibration_data'] = data
+
+        if hasattr(data, 'baseline'):
+            df['baseline'] = data.baseline
+           
+        st.session_state['dataframe'] = pd.concat([st.session_state['dataframe'], df])
             
 # Prominence Slider and Calibration Parameters
+def optimise():
+    st.session_state['a'], st.session_state['k'] = st.session_state['calibration_data'].optimise(
+            st.session_state['a'], st.session_state['k'], threshold=0.001)
+    try:
+        st.session_state['a'], st.session_state['k'] = st.session_state['calibration_data'].optimise(
+            st.session_state['a'], st.session_state['k'], threshold=0.001)
+    except ValueError:
+        st.warning('No peaks detected for optimisation')
+    except AttributeError:
+        st.warning('No data selected')
+
+# Save Data
+def save():
+    for name in st.session_state['data']:
+        # Initialise filename
+        directory = all_files[0][:directory_length+6]
+        name = name[:-4] + '_adj'
+        clean_name = name
+        i = 0
+        ## Find unique file name
+        while os.path.isfile(directory + name + '.npy'):
+            name = clean_name + '_' + str(i)
+            i += 1
+
+        # Select data from dataframe
+        df = st.session_state['dataframe']
+        df = df[df['name'] == df['name']]
+        to_save = df[['time', 'voltage']]
+        to_save.loc[:, 'time'] *= 1e-6
+        to_save.loc[:, 'voltage'] = -to_save['voltage']
+        np.save(directory + name + '.npy', to_save.to_numpy())
+
+
 with st.sidebar:
+    # Peak Detection and Mass Calibration
     with st.container(border=True):
         dummy = np.arange(1, 10, 1)
         prominence_steps = np.concatenate((dummy/1000, dummy/100, dummy/10, dummy, dummy*10))
 
         st.write("## Peak Detection & Mass Calibration")
-        st.session_state['prominence'] = st.select_slider("Peak Prominence", options=prominence_steps, value=0.5)
+        st.session_state['prominence'] = st.select_slider("Peak Prominence", options=prominence_steps, value=1)
         st.write('### Mass Calibration')
         st.write('$m = a(t-k)^2$')
 
         col1, col2 = st.columns(2)
         with col1:
             st.session_state['a'] = st.number_input("a", min_value=0.0, step=1e-8, value=st.session_state['a'], format='%.8f')
-            if st.button('Auto-Calibrate'):
-                try:
-                    st.session_state['a'], st.session_state['k'] = st.session_state['calibration_data'].optimise(threshold=0.001)
-                except:
-                    st.warning('No data selected')
+            st.button('Auto-Calibrate', on_click=optimise)
+                
         with col2:
             st.session_state['k'] = st.number_input("k", step=1e-8, value=st.session_state['k'], format='%.8f')
-            if st.button('Apply'):
-                gen_df(optimise = False)
-st.session_state['data'] = st.multiselect("Select Data", 
-                [file_name[directory_length+6:] for file_name in all_files])
+            st.button('Apply', on_click=gen_df)
+
+    # Baseline Correction
+    with st.container(border=True):
+        st.write("## Baseline Correction")
+        options = ['No selection']
+        options = [file_name[directory_length+6:] for file_name in all_files]
+        options.insert(0, 'No selection')
+        baseline = st.selectbox("Baseline File", options)
+        if baseline == 'No selection':
+            st.session_state['baseline'] = None
+        else:
+            baseline = all_files[0][:directory_length+6] + baseline
+            st.session_state['baseline'] = baseline
+
+        multiplier = st.number_input('Multiplier', value=1.)
+        lam = 10**st.select_slider(r'$\lambda$ ($10^{x}$)', np.arange(0, 12.1, 1), value=9)
+        col1, col2 = st.columns(2)
+        with col1:
+            st.button('Apply', key=1, on_click=gen_df)
+        with col2:
+            st.button('Save', on_click=save)
+
+# Actual data selection
+st.session_state['data'] = st.multiselect("Select Data", [file_name[directory_length+6:] for file_name in all_files])
 
 if st.session_state['data'] != st.session_state['old_data']:
     st.session_state['old_data'] = st.session_state['data']
-    gen_df(optimise=True)
-
+    gen_df()
 
 # Plot
 def generate_fig():
@@ -199,6 +254,7 @@ if st.session_state['data'] != []:
         peak_detection = st.toggle('Peak Detection')
         show_tag = st.toggle('Show Tag')
         normalise = st.toggle('Normalise')
+
         with st.container(border = True):
             pointer = st.toggle('Pointer')
             pointer_value = st.number_input('Pointer',
