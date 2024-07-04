@@ -32,7 +32,7 @@ with st.container(border=True):
 with st.container(border=True):
     st.write('## Solution')
     with catch_warnings(record=True) as w:
-        a, k = fsolve(system, [0.088, 0.19], args=(t1, t2, m1, m2))
+        a, k = fsolve(system, [st.session_state['a'], st.session_state['k']], args=(t1, t2, m1, m2))
     st.write("#### a = `%.3f` amu/μs$^{2}$" % a)
     st.write("#### k = `%.3f` μs" % k)
 
