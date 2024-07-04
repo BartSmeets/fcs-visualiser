@@ -23,10 +23,10 @@ with st.container(border=True):
     col1, col2 = st.columns(2)
     with col1:
         t1 = st.number_input(r'$t_{1}$ (μs)', min_value=0.0, format='%.3f')
-        m1 = st.number_input(r'$m_{1}$ (amu)', min_value=0.0, format='%.3f')
+        m1 = st.number_input(r'$m_{1}$ (amu)', min_value=0.0, format='%.4f')
     with col2:
         t2 = st.number_input(r'$t_{2}$ (μs)', min_value=0.0, format='%.3f')
-        m2 = st.number_input(r'$m_{2}$ (amu)', min_value=0.0, format='%.3f')
+        m2 = st.number_input(r'$m_{2}$ (amu)', min_value=0.0, format='%.4f')
 
 # Output
 with st.container(border=True):
