@@ -205,7 +205,8 @@ def generate_fig():
                 xanchor="left",
                 orientation="h"),
             legend_title_text='',
-            xaxis=dict(showgrid=True))
+            xaxis=dict(showgrid=True),
+            uirevision=True)
         
     def show_peak_lines(index):
         if peak_detection or show_tag:
