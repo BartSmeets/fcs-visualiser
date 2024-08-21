@@ -12,6 +12,12 @@ if 'scope1' not in st.session_state:
         st.session_state['scope1'] = scope1
     except:
         st.warning("Couldn't connect with the primary scope")
+if 'scope2' not in st.session_state:
+    try:
+        scope2 = scope.initialise("MDO34_Secondary","MDO34_SN_Secondary")
+        st.session_state['scope2'] = scope2
+    except:
+        st.warning("Couldn't connect with the primary scope")
 if 'fig1' not in st.session_state:
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=[], y=[], mode='lines'))
@@ -112,10 +118,20 @@ with st.container(border=True):
     figure = st.empty()
     success = st.empty()
     figure.plotly_chart(st.session_state['fig1'])
+# Secondary Scope
+with st.container(border=True):
+    # Initialise
+    st.header('Secondary Scope')
+    figure2 = st.empty()
+    success2 = st.empty()
+    figure2.plotly_chart(st.session_state['fig1'])
+
 
 # Run Live Feed
 while st.session_state['run']:
     if not output('scope1', figure, success):
+        break
+    if not output('scope2', figure2, success2):
         break
 
 
