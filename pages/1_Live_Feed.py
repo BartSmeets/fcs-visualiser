@@ -67,7 +67,10 @@ def output(scope_str, fig_frame, R_frame):
             peaks, _ = find_peaks(y_data, prominence=10)
             ## Calculate which peak is closest to target
             diff = np.abs(x_data[peaks] - st.session_state['target'])
-            the_chosen_one = peaks[np.argmin(diff)]
+            try:
+                the_chosen_one = peaks[np.argmin(diff)]
+            except ValueError:
+                R_frame.error('No Peaks found')
             ## Calcualte peak width (in index number...)
             _, _, lips, rips = peak_widths(y_data, peaks=[the_chosen_one])
             delta = x_data[int(rips[0])] - x_data[int(lips[0])] # Convert peak width to time units
