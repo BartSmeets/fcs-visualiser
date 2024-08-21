@@ -31,6 +31,8 @@ if 'R_toggle' not in st.session_state:
     st.session_state['R_toggle'] = False
 if 'target' not in st.session_state:
     st.session_state['target'] = 0.0
+if 'avg' not in st.session_state:
+    st.session_state['avg'] = np.zeros(5)
 
 # Define Reading Function
 def output(scope_str, fig_frame, R_frame):
@@ -76,7 +78,11 @@ def output(scope_str, fig_frame, R_frame):
             delta = x_data[int(rips[0])] - x_data[int(lips[0])] # Convert peak width to time units
             # Calculate Resolution
             R = st.session_state['target'] / (2*delta)
-            R_frame.success(f'Resolution = {R:.1f}')
+            st.session_state['avg'] = np.append(st.session_state['avg'], R)
+            st.session_state['avg'] = np.delete(st.session_state['avg'], 0)
+            avg = np.average(st.session_state['avg'])
+            R_frame.success(f'Resolution = {R:.1f} \
+                             \nAverage (5 cycles) = {avg:.1f}')
 
         return True
 
