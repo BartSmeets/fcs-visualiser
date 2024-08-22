@@ -17,7 +17,7 @@ if 'scope2' not in st.session_state:
         scope2 = scope.initialise("MDO34_Secondary","MDO34_SN_Secondary")
         st.session_state['scope2'] = scope2
     except:
-        st.warning("Couldn't connect with the primary scope")
+        st.warning("Couldn't connect with the secondary scope")
 if 'fig1' not in st.session_state:
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=[], y=[], mode='lines'))
@@ -51,9 +51,9 @@ def output(scope_str, fig_frame, R_frame):
         scope_obj = st.session_state[scope_str]
     except KeyError:
         if scope_str == 'scope1':
-            st.error("Couldn't connect to Primary Scope")
+            st.error("Couldn't connect to the primary scope")
         else:
-            st.error("Couldn't connect to secondary scope")
+            st.error("Couldn't connect to the secondary scope")
         return False
     else:
         data = scope.read('CH1', scope_obj)
