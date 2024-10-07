@@ -129,9 +129,7 @@ with st.container(border=True):
 
 # Run Live Feed
 while st.session_state['run']:
-    if not output('scope1', figure, success):
-        break
-    if not output('scope2', figure2, success2):
+    if not output('scope1', figure, success) and not output('scope2', figure2, success2):
         break
 
 
