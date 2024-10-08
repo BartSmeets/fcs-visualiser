@@ -39,6 +39,8 @@ if 'target' not in st.session_state:
     st.session_state['target'] = 0.0
 if 'avg' not in st.session_state:
     st.session_state['avg'] = np.zeros(5)
+if 'lf_baseline' not in st.session_state:
+    st.session_state['lf_baseline'] = 0.0
 
 # Define Reading Function
 def output(scope_str, fig_frame, R_frame):
@@ -60,7 +62,7 @@ def output(scope_str, fig_frame, R_frame):
 
         # Generate figure
         fig.data[0].x = data[:, 0] * 1e6    # us
-        fig.data[0].y = data[:, 1] * 1e3    # mV
+        fig.data[0].y = data[:, 1] * 1e3 - st.session_state['lf_baseline']  # mV
         fig.update_layout(
             yaxis_range=[st.session_state['y_min'], st.session_state['y_max']], 
             xaxis_range=[st.session_state['x_min'], st.session_state['x_max']])
@@ -70,7 +72,7 @@ def output(scope_str, fig_frame, R_frame):
         if st.session_state['R_toggle']:
             # Extract data
             x_data = data[:, 0]*1e6 # us
-            y_data = -data[:,1]*1e3 # mV
+            y_data = -data[:,1]*1e3 - st.session_state['lf_baseline']   # mV
             # Find Peaks
             peaks, _ = find_peaks(y_data, prominence=10)
             ## Calculate which peak is closest to target
@@ -104,6 +106,7 @@ with st.sidebar:
     with col2:
         st.number_input('x$_{max}$', key='x_max')
         st.number_input('y$_{max}$', key='y_max')
+    st.number_input('Baseline (mV)', key='lf_baseline')
     
     # Resolution
     with st.container(border=True):
