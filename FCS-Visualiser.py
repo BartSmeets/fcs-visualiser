@@ -18,20 +18,20 @@ st.set_page_config(
     page_icon="https://static-00.iconduck.com/assets.00/python-icon-512x509-pb65l7gl.png")
 st.write("# FCS Visualiser")
 try:
-    with open('test.toml', 'r') as f:
+    with open('defaults.toml', 'r') as f:
         defaults = toml.load(f)
 except OSError:
     modules.setup()
 
 # Initialise session states
 if 'directory' not in st.session_state:
-    st.session_state['directory'] = defaults.get('defaults', 'directory')
+    st.session_state['directory'] = defaults['directory']
 if 'prominence' not in st.session_state:
     st.session_state['prominence'] = 1
 if 'a' not in st.session_state:
-    st.session_state['a'] = float(defaults.get('defaults', 'a'))
+    st.session_state['a'] = defaults['calibration']['a']
 if 'k' not in st.session_state:
-    st.session_state['k'] = float(defaults.get('defaults', 'k'))
+    st.session_state['k'] = defaults['calibration']['k']
 if 'data' not in st.session_state:
     st.session_state['data'] = []
 if 'old_data' not in st.session_state:
