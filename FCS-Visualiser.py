@@ -47,6 +47,9 @@ if 'dataframe' not in st.session_state:
                                                 'voltage': [],
                                                 'norm': [],
                                                 'name': []})
+if 'figure' not in st.session_state:
+    st.session_state['figure'] = px.line([])
+
 file_extension = "*.npy"
 
 # Folder selection in sidebar
@@ -266,6 +269,7 @@ if st.session_state['data'] != []:
                                             label_visibility='collapsed')  
     with col1:
         fig = generate_fig()
+        st.session_state['figure'] = fig
         st.plotly_chart(fig)
 
     # Table
