@@ -1,5 +1,6 @@
 # Imports
 import configparser
+import toml
 import streamlit as st
 import tkinter as tk
 from tkinter import filedialog
@@ -16,20 +17,21 @@ st.set_page_config(
     page_title="FCS Visualiser",
     page_icon="https://static-00.iconduck.com/assets.00/python-icon-512x509-pb65l7gl.png")
 st.write("# FCS Visualiser")
-defaults = configparser.ConfigParser()
-defaults.read('defaults.ini')
-if  defaults.read('defaults.ini') == []:
-    modules.setup(defaults)
+try:
+    with open('defaults.toml', 'r') as f:
+        defaults = toml.load(f)
+except OSError:
+    modules.setup()
 
 # Initialise session states
 if 'directory' not in st.session_state:
-    st.session_state['directory'] = defaults.get('defaults', 'directory')
+    st.session_state['directory'] = defaults['directory']
 if 'prominence' not in st.session_state:
     st.session_state['prominence'] = 1
 if 'a' not in st.session_state:
-    st.session_state['a'] = float(defaults.get('defaults', 'a'))
+    st.session_state['a'] = defaults['calibration']['a']
 if 'k' not in st.session_state:
-    st.session_state['k'] = float(defaults.get('defaults', 'k'))
+    st.session_state['k'] = defaults['calibration']['k']
 if 'data' not in st.session_state:
     st.session_state['data'] = []
 if 'old_data' not in st.session_state:
@@ -45,6 +47,9 @@ if 'dataframe' not in st.session_state:
                                                 'voltage': [],
                                                 'norm': [],
                                                 'name': []})
+if 'figure' not in st.session_state:
+    st.session_state['figure'] = px.line([])
+
 file_extension = "*.npy"
 
 # Folder selection in sidebar
@@ -159,7 +164,7 @@ with st.sidebar:
         col1, col2 = st.columns(2)
         with col1:
             st.session_state['a'] = st.number_input("a", min_value=0.0, step=1e-8, value=st.session_state['a'], format='%.8f')
-            st.button('Auto-Calibrate', on_click=optimise)
+            st.button('Auto-Calibrate', on_click=optimise, disabled=True)
                 
         with col2:
             st.session_state['k'] = st.number_input("k", step=1e-8, value=st.session_state['k'], format='%.8f')
@@ -264,6 +269,7 @@ if st.session_state['data'] != []:
                                             label_visibility='collapsed')  
     with col1:
         fig = generate_fig()
+        st.session_state['figure'] = fig
         st.plotly_chart(fig)
 
     # Table
