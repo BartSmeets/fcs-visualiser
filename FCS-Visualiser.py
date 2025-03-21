@@ -164,7 +164,7 @@ with st.sidebar:
         col1, col2 = st.columns(2)
         with col1:
             st.session_state['a'] = st.number_input("a", min_value=0.0, step=1e-8, value=st.session_state['a'], format='%.8f')
-            st.button('Auto-Calibrate', on_click=optimise)
+            st.button('Auto-Calibrate', on_click=optimise, disabled=True)
                 
         with col2:
             st.session_state['k'] = st.number_input("k", step=1e-8, value=st.session_state['k'], format='%.8f')

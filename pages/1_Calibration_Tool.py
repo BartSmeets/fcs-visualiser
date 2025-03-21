@@ -56,6 +56,10 @@ def apply(a, k):
     with open('defaults.toml', "w") as toml_file:
         toml.dump(defaults, toml_file)
 
+    # Update Session State
+    st.session_state['a'] = a
+    st.session_state['k'] = k
+
 with st.container(border=True):
     st.write('## Solution')
     with catch_warnings(record=True) as w:
