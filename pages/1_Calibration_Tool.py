@@ -44,21 +44,21 @@ def apply(a, k):
 
     # Log new values
     defaults['logbook'][today.isoformat()] = {
-        'a': a,
-        'k': k
+        'a': float(a),
+        'k': float(k)
         }
 
     # Store new values
-    defaults['calibration']['a'] = a
-    defaults['calibration']['k'] = k
+    defaults['calibration']['a'] = float(a)
+    defaults['calibration']['k'] = float(k)
 
     # Dump
     with open('defaults.toml', "w") as toml_file:
         toml.dump(defaults, toml_file)
 
     # Update Session State
-    st.session_state['a'] = a
-    st.session_state['k'] = k
+    st.session_state['a'] = float(a)
+    st.session_state['k'] = float(k)
 
 with st.container(border=True):
     st.write('## Solution')

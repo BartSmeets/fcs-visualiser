@@ -22,6 +22,8 @@ try:
         defaults = toml.load(f)
 except OSError:
     modules.setup()
+    with open('defaults.toml', 'r') as f:
+        defaults = toml.load(f)
 
 # Initialise session states
 if 'directory' not in st.session_state:
