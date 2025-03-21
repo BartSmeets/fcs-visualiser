@@ -1,5 +1,6 @@
 # Imports
 import configparser
+import toml
 import streamlit as st
 import tkinter as tk
 from tkinter import filedialog
@@ -16,10 +17,11 @@ st.set_page_config(
     page_title="FCS Visualiser",
     page_icon="https://static-00.iconduck.com/assets.00/python-icon-512x509-pb65l7gl.png")
 st.write("# FCS Visualiser")
-defaults = configparser.ConfigParser()
-defaults.read('defaults.ini')
-if  defaults.read('defaults.ini') == []:
-    modules.setup(defaults)
+try:
+    with open('test.toml', 'r') as f:
+        defaults = toml.load(f)
+except OSError:
+    modules.setup()
 
 # Initialise session states
 if 'directory' not in st.session_state:
