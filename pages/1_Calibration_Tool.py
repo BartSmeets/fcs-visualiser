@@ -1,39 +1,60 @@
 import streamlit as st
-from scipy.optimize import fsolve
+from scipy.optimize import fsolve, curve_fit
 from warnings import catch_warnings
 import toml
 from datetime import datetime
-
-def system(x, t1, t2, m1, m2):
-    eq1 = x[0]*(t1 - x[1])**2 - m1
-    eq2 = x[0]*(t2 - x[1])**2 - m2
-    return [eq1, eq2]
+import plotly.express as px
+import pandas as pd
+import numpy as np
 
 
 # Information
 st.set_page_config(layout='wide')
-
 st.write("# Manual Calibration Tool")
-st.write("This tool will solve the following system of equations:")
-st.latex(r"\begin{cases}\
-         m_{1} = a(t_{1} - k)^{2} \\ \
-         m_{2} = a(t_{2} - k)^{2}, \
-         \end{cases}")
-st.write(r"where $t_{1}$ and $t_{2}$ are the times (μs) at which a peak is observed; and $m_{1}$ and $m_{2}$ are the masses (amu) that correspond to these times.")
+
 
 # Figure
+def generate_fig():
+    def prepare_axes(xlabel, ylabel):
+        fig.update_layout(
+            xaxis_title = xlabel,
+            yaxis_title = ylabel,
+            legend = dict(
+                yanchor="bottom",
+                y=1.02,
+                xanchor="left",
+                orientation="h"),
+            legend_title_text='',
+            xaxis=dict(showgrid=True),
+            uirevision=True)
+    
+    # Time Spectrum
+    fig = px.line(st.session_state['dataframe'], x='time', y='voltage', color='name')
+    prepare_axes('time (us)', 'accumulated voltage (V)')
+    
+    return fig
 
-st.plotly_chart(st.session_state['figure'])
+st.plotly_chart(generate_fig())
+
 
 # Input
-with st.container(border=True):
-    col1, col2 = st.columns(2)
-    with col1:
-        t1 = st.number_input(r'$t_{1}$ (μs)', min_value=0.0, format='%.3f')
-        m1 = st.number_input(r'$m_{1}$ (amu)', min_value=0.0, format='%.4f')
-    with col2:
-        t2 = st.number_input(r'$t_{2}$ (μs)', min_value=0.0, format='%.3f')
-        m2 = st.number_input(r'$m_{2}$ (amu)', min_value=0.0, format='%.4f')
+edited_df = st.data_editor(pd.DataFrame({'Time':[], 'Mass':[]}), num_rows="dynamic", width=500)
+
+# Optimise
+def optimise():
+    y = np.array(edited_df['Mass'])
+    x = np.array(edited_df['Time'])
+    mask = ~np.logical_or(np.isnan(x),np.isnan(y))
+    x = x[mask]
+    y = y[mask]
+
+    toFit = lambda x, a, k: a*(x-k)**2
+    try:
+        popt, pcov = curve_fit(toFit, x, y, p0=[0.09, 0.2])
+    except:
+        return 0, 0
+    return popt[0], popt[1]
+    
 
 # Output
 def apply(a, k):
@@ -60,10 +81,11 @@ def apply(a, k):
     st.session_state['a'] = float(a)
     st.session_state['k'] = float(k)
 
+# Print Output
 with st.container(border=True):
     st.write('## Solution')
     with catch_warnings(record=True) as w:
-        a, k = fsolve(system, [st.session_state['a'], st.session_state['k']], args=(t1, t2, m1, m2))
+        a, k = optimise()
     st.write("#### a = `%.5f` amu/μs$^{2}$" % a)
     st.write("#### k = `%.5f` μs" % k)
     st.button('Apply', on_click=lambda: apply(a, k))
