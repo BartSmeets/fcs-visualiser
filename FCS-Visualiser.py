@@ -224,17 +224,6 @@ if st.session_state['data'] != []:
         st.session_state['figure'] = fig
         st.plotly_chart(fig)
 
-    # Table
-    st.write('## Table')
-
-    max_columns = 9
-    pd.set_option('display.max_rows', None)
-    pd.options.display.float_format = '{:,.5f}'.format
-    try:
-        st.dataframe(st.session_state['table'].iloc[:, :max_columns])
-    except:
-        pass
-
 
 
 
