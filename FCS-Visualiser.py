@@ -60,22 +60,21 @@ all_files = list_data_files(state.directory)
 file_names = [basename(p) for p in all_files]
     	
 # --------------------------------------------------------------------------
-# TODO Sidebar: mass calibration + baseline correction
+# Sidebar: mass calibration + baseline correction
 # --------------------------------------------------------------------------
  
-# with st.sidebar:
-#     with st.container(border=True):
-#         st.write("### Mass Calibration")
-#         st.write("$m = a(t-k)^2$")
+with st.sidebar, st.container(border=True):
+    st.write("### Mass Calibration")
+    st.write("$m = a(t-k)^2$")
  
-#         col1, col2 = st.columns(2)
-#         with col1:
-#             state.a = st.number_input(
-#                 "a", min_value=0.0, step=1e-8, value=state.a, format="%.8f"
-#             )
-#         with col2:
-#             state.k = st.number_input("k", step=1e-8, value=state.k, format="%.8f")
-#         st.button("Apply", on_click=gen_df, args=(state,))
+    col1, col2 = st.columns(2)
+    with col1:
+        state.a = st.number_input(
+            "a", min_value=0.0, step=1e-8, value=state.a, format="%.8f"
+        )
+    with col2:
+        state.k = st.number_input("k", step=1e-8, value=state.k, format="%.8f")
+    st.button("Apply", on_click=gen_df, args=(state,))
  
 #     with st.container(border=True):
 #         st.write("## Baseline Correction")

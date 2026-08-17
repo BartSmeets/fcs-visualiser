@@ -11,7 +11,7 @@ import os
 import pandas as pd
 import streamlit as st
 
-from modules.calibration import load_data
+from analysis import Data
 
 from .state import AppState
 
@@ -40,7 +40,7 @@ def gen_df(state: AppState) -> None:
     for name in state.data:
         path = full_path(state, name)
         try:
-            data = load_data(path, init_param)
+            data = Data(path, init_param)
         except OSError:
             st.warning(f"Could not read '{name}' — skipping.")
             continue
