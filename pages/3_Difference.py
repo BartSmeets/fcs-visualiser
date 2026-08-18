@@ -178,6 +178,10 @@ if run_button and state.directory.exists():
     state.ioff, state.ion = integrated_signals(state, target_masses)
 
 if state.ioff is not None:
+    if not st.toggle("difference | depletion mode", value=False):
+        mode = "diff"
+    else:
+        mode = "depl"
     used_masses = np.asarray(state.target_masses)   # <-- use frozen list, not live target_masses
     valid_mask = ~np.isnan(state.ioff).any(axis=1)
     valid_masses = used_masses[valid_mask]
@@ -194,6 +198,7 @@ if state.ioff is not None:
         state.ioff[idx, :],
         state.ion[idx, :],
         selected,
+        mode,
     )
     st.plotly_chart(fig, width='stretch')
 

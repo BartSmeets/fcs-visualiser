@@ -1,5 +1,6 @@
 """Plot generation for the FCS Visualiser."""
  
+import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 
@@ -30,18 +31,33 @@ def generate_fig(state: AppState, spectrum_type: str, pointer: bool, pointer_val
     return fig
 
 
-def plot_on_off_difference(wavelengths, ioff, ion, targets):
+def plot_on_off_difference(wavelengths, ioff, ion, targets, mode):
     diff = ion - ioff  # shape (n_targets, n_wavelengths)
-
+    depl = -np.log(ion / ioff)
+    
     fig = go.Figure()
-    for i, mass in enumerate(targets):
-        fig.add_trace(go.Scatter(
-            x=wavelengths,
-            y=diff[i, :],
-            mode="lines+markers",
-            name=f"m/z {mass}",
-            xaxis="x",
-        ))
+    if mode == "diff":
+        for i, mass in enumerate(targets):
+            fig.add_trace(go.Scatter(
+                x=wavelengths,
+                y=diff[i, :],
+                mode="lines+markers",
+                name=f"m/z {mass}",
+                xaxis="x",
+            ))
+
+        fig.update_layout(yaxis_title="ΔSignal (IR on − IR off)",)
+    else:
+        for i, mass in enumerate(targets):
+            fig.add_trace(go.Scatter(
+                x=wavelengths,
+                y=depl[i, :],
+                mode="lines+markers",
+                name=f"m/z {mass}",
+                xaxis="x",
+            ))
+
+        fig.update_layout(yaxis_title="Depletion",)
 
     fig.add_hline(y=0, line_dash="dot", line_color="gray")
 
@@ -61,7 +77,6 @@ def plot_on_off_difference(wavelengths, ioff, ion, targets):
             "side": "top",
             "range": [wn_at_min, wn_at_max],  # reversed to align with wavelength axis
         },
-        yaxis_title="ΔSignal (IR on − IR off)",
         legend_title="Mass",
         hovermode="closest",
         height=500,
