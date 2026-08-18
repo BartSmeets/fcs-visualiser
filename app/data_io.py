@@ -126,3 +126,24 @@ def gen_df(state: AppState) -> None:
         if rows
         else pd.DataFrame({"time": [], "mass": [], "voltage": [], "name": []})
     )
+
+
+def gen_csv(state: AppState):
+    """
+    Export intgerated signals to csv
+
+    """
+    export_rows = []
+    for i, mass in enumerate(state.target_masses):
+        for j, wl in enumerate(state.files_df.wave.unique()):
+            export_rows.append({
+                "wavelength_nm": wl,
+                "mass": mass,
+                "ion": state.ion[i, j],
+                "ioff": state.ioff[i, j],
+                "diff": state.ion[i, j] - state.ioff[i, j],
+            })
+    result_df = pd.DataFrame(export_rows)
+
+    csv = result_df.to_csv(index=False)
+    return csv

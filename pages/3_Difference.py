@@ -5,7 +5,7 @@ import toml
 # Your imports
 from analysis import integrated_signals, target_mass
 from app import sidebar
-from app.data_io import get_all_data
+from app.data_io import gen_csv, get_all_data
 from app.plotting import plot_on_off_difference
 from app.state import get_difference_state
 
@@ -98,35 +98,35 @@ with st.expander("Boxcar Settings"):
         bxtype = st.selectbox(
             "Boxcar type",
             ["width", "resolution"],
-            disabled=True
+            disabled=False
         )
         state.boxcar.bxtype = bxtype
 
         bxwidth = st.number_input(
             "Boxcar width (m/z)",
             value=state.boxcar.bxwidth,
-            disabled=True
+            disabled=False
         )
         state.boxcar.bxwidth = bxwidth
 
         bxresmulti = st.number_input(
             "Resolution multiplier",
             value=state.boxcar.bxresmulti,
-            disabled=True
+            disabled=False
         )
         state.boxcar.bxresmulti = bxresmulti
 
         bxtolerance = st.number_input(
             "Mass fit tolerance",
             value=state.boxcar.bxtolerance,
-            disabled=True
+            disabled=False
         )
         state.boxcar.bxtolerance = bxtolerance
 
         showgates = st.checkbox(
             "Show gates",
             value=state.boxcar.showgates,
-            disabled=True
+            disabled=False
         )
         state.boxcar.showgates = showgates
 
@@ -135,35 +135,35 @@ with st.expander("Boxcar Settings"):
         bgtype = st.selectbox(
             "Background type",
             ["none", "offset", "range"],
-            disabled=True
+            disabled=False
         )
         state.boxcar.bgtype = bgtype
 
         bgoffset = st.number_input(
             "Background offset",
             value=state.boxcar.bgoffset,
-            disabled=True
+            disabled=False
         )
         state.boxcar.bgoffset = bgoffset
 
         bgaverage = st.checkbox(
             "Average background",
             value=state.boxcar.bgaverage,
-            disabled=True
+            disabled=False
         )
         state.boxcar.bgaverage = bgaverage
 
         bgmultiplier = st.number_input(
             "Background multiplier",
             value=state.boxcar.bgmultiplier,
-            disabled=True
+            disabled=False
         )
         state.boxcar.bgmultiplier = bgmultiplier
 
         bgrange_text = st.number_input(
             "Background range stop",
             value=5000,
-            disabled=True
+            disabled=False
         )
         state.boxcar.bgrange = range(int(bgrange_text))
 
@@ -197,11 +197,11 @@ if state.ioff is not None:
     )
     st.plotly_chart(fig, width='stretch')
 
-#     csv = result_df.to_csv(index=False)
+    csv = gen_csv(state)
 
-#     st.download_button(
-#         "Download CSV",
-#         csv,
-#         "integrated_masses.csv",
-#         "text/csv"
-#     )
+    st.download_button(
+        "Download CSV",
+        csv,
+        "integrated_masses.csv",
+        "text/csv"
+    )
