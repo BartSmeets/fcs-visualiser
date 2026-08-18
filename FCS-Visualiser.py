@@ -8,10 +8,10 @@ import streamlit as st
 import toml
 
 import modules
+from app import sidebar
 from app.data_io import basename, gen_df, list_data_files
-from app.folder_dialog import select_folder
 from app.plotting import generate_fig
-from app.state import get_state
+from app.state import get_home_state
 
 FILE_EXTENSION = "*.npy"
 
@@ -35,26 +35,13 @@ except OSError:
     with open('defaults.toml', 'r') as f:
         defaults = toml.load(f)
 
-state = get_state(defaults)
+state = get_home_state(defaults)
 
 # --------------------------------------------------------------------------
 # Sidebar: directory selection
 # --------------------------------------------------------------------------
 
-with st.sidebar:
-    # Buttons
-    col1, col2 = st.columns(2)
-    ## Select Directory
-    with col1:
-        if st.button("Select Directory"):
-            selected = select_folder(state.directory)
-            if selected != '':
-                state.directory = selected
-    ## Refresh Files
-    with col2:
-        st.button("Refresh Files")
-
-    state.directory = st.text_input("Directory", value = state.directory)
+sidebar.directory(state)
 
 all_files = list_data_files(state.directory)
 file_names = [basename(p) for p in all_files]
@@ -63,18 +50,7 @@ file_names = [basename(p) for p in all_files]
 # Sidebar: mass calibration + baseline correction
 # --------------------------------------------------------------------------
  
-with st.sidebar, st.container(border=True):
-    st.write("### Mass Calibration")
-    st.write("$m = a(t-k)^2$")
- 
-    col1, col2 = st.columns(2)
-    with col1:
-        state.a = st.number_input(
-            "a", min_value=0.0, step=1e-8, value=state.a, format="%.8f"
-        )
-    with col2:
-        state.k = st.number_input("k", step=1e-8, value=state.k, format="%.8f")
-    st.button("Apply", on_click=gen_df, args=(state,))
+sidebar.calibration(state)
  
 #     with st.container(border=True):
 #         st.write("## Baseline Correction")

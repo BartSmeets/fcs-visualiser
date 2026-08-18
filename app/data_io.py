@@ -5,8 +5,10 @@ st.session_state, which keeps them testable outside of a running Streamlit
 session (e.g. construct an AppState and call gen_df(state) in plain pytest).
 """
  
-import glob
 import os
+import re
+from glob import glob
+from pathlib import Path
 
 import pandas as pd
 import streamlit as st
@@ -20,7 +22,7 @@ FILE_EXTENSION = "*.npy"
 
 def list_data_files(directory: str) -> list[str]:
     """Return full paths of all data files in `directory`."""
-    return glob.glob(os.path.join(directory, FILE_EXTENSION))
+    return glob(os.path.join(directory, FILE_EXTENSION))
 
 
 def basename(path: str) -> str:
@@ -30,6 +32,65 @@ def basename(path: str) -> str:
 def full_path(state: AppState, name: str) -> str:
     """Rebuild a full path from a filename shown in the UI."""
     return os.path.join(state.directory, name)
+
+
+def parse_filename(filename: str):
+    """
+    Extract the wavelength and on/off state from a file name.
+
+    The filename is expected to follow the pattern
+    `<prefix>_<value>_<IR|noIR>.<extension>`
+
+    Parameters
+    ----------
+    filename: str
+        file directory
+
+    Returns
+    -------
+    tuple: tuple
+        A tuple containing the wavelength and state, or None if no match
+    
+    """
+    stem = Path(filename).stem
+
+    match = re.match(r".*_(.+?)_(IR|noIR)$", stem, re.IGNORECASE,)
+
+    if match is None:
+        return None
+
+    return (float(match.group(1)), match.group(2).lower())
+
+
+def get_all_data(state: AppState):
+    """
+    Generate a DataFrame containing all files with their corresponding wavelength and IR state
+
+    Returns
+    -------
+    file_records: DataFrame
+        contains file, wavelength, and onoff (ir | noir)
+    
+    """
+    npy_files = sorted(list_data_files(state.directory))
+    
+    file_records = []
+
+    for f in npy_files:
+        parsed = parse_filename(f)
+
+        if parsed is None:
+            continue
+
+        wavelength, onoff = parsed
+        file_records.append({
+                "file": f,
+                "wave": wavelength,
+                "onoff": onoff
+            })
+
+    files_df = pd.DataFrame(file_records)
+    return files_df
 
 
 def gen_df(state: AppState) -> None:

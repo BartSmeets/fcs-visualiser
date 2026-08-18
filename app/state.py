@@ -6,6 +6,7 @@ A single AppState instance lives in st.session_state['app_state'] and is passed 
 """
 
 from dataclasses import dataclass, field
+from pathlib import Path
 
 import pandas as pd
 import plotly.express as px
@@ -21,28 +22,78 @@ def _empty_figure():
 
 
 @dataclass
+class BoxcarSettings:
+    bxtype: str = 'width'
+    bxwidth: float = 1.0
+    bxresmulti: float = 2.0
+    bxtolerance: float = 1.0
+    showgates: bool = False
+
+    bgtype: str = 'none'
+    bgrange: range = range(5000)
+    bgoffset: float = -1.2
+    bgaverage: bool = False
+    bgmultiplier: float = 0.5
+
+
+@dataclass
+class IntegrationMassSettings:
+    main_mass: float = 58.933
+    main_num: int = 40
+    messenger_mass: float = 18
+    messenger_num: int = 2
+
+
+@dataclass
 class AppState:
     directory: str
     a: float
     k: float
+
     data: list[str] = field(default_factory=list)
     old_data: list[str] = field(default_factory=list)
+
     baseline: str | None = None
     lam: float = 1e9
     multiplier: float = 1.0
+
     dataframe: pd.DataFrame = field(default_factory=_empty_dataframe)
     figure: object = field(default_factory=_empty_figure)
 
+    boxcar: BoxcarSettings | None = None
+    intmass: IntegrationMassSettings | None = None
+    files_df = None
+    target_masses = None
+    ioff = None
+    ion = None
 
-def get_state(defaults: dict) -> AppState:
+
+def get_home_state(defaults: dict) -> AppState:
     """
     Return the single AppState for this session, creating it on first run.
     
     """
-    if "app_state" not in st.session_state:
-        st.session_state["app_state"] = AppState(
-            directory=defaults["directory"],
+    if "home_state" not in st.session_state:
+        st.session_state["home_state"] = AppState(
+            directory=Path(defaults["directory"]),
             a=defaults["calibration"]["a"],
             k=defaults["calibration"]["k"],
         )
-    return st.session_state["app_state"]
+    return st.session_state["home_state"]
+
+
+def get_difference_state(defaults: dict) -> AppState:
+    """
+    Return the single AppState for this session, creating it on first run.
+    
+    """
+    state = AppState(
+            directory=defaults["directory"],
+            a=defaults["calibration"]["a"],
+            k=defaults["calibration"]["k"],
+            boxcar = BoxcarSettings(),
+            intmass = IntegrationMassSettings(),
+        )
+    if "difference_state" not in st.session_state:
+        st.session_state["difference_state"] = state
+    return st.session_state["difference_state"]
