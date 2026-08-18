@@ -13,7 +13,7 @@ def target_mass(state: AppState):
         session state containing at least the intmass attribute
     
     """
-    num_main = np.arange(0, state.intmass.main_num + 1)
+    num_main = np.arange(1, state.intmass.main_num + 1)
     num_messenger = np.arange(0, state.intmass.messenger_num + 1)
 
     main_mass_array = num_main * state.intmass.main_mass
