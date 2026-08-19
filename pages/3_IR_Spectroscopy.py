@@ -3,7 +3,7 @@ import streamlit as st
 import toml
 
 # Your imports
-from analysis import integrated_signals, target_mass
+from analysis.ir import filter, integrated_signals, target_mass
 from app import sidebar
 from app.data_io import gen_csv, get_all_data
 from app.plotting import plot_on_off_difference
@@ -91,6 +91,7 @@ with st.expander("Masses"):
 # ============================================================
 
 with st.expander("Boxcar Settings"):
+    st.write(state.boxcar.description)
     col1, col2 = st.columns(2)
 
     with col1:
@@ -182,9 +183,18 @@ if state.ioff is not None:
         mode = "diff"
     else:
         mode = "depl"
-    used_masses = np.asarray(state.target_masses)   # <-- use frozen list, not live target_masses
-    valid_mask = ~np.isnan(state.ioff).any(axis=1)
-    valid_masses = used_masses[valid_mask]
+
+    # Filter
+    col1, col2 = st.columns(2)
+    with col1:
+        m_threshold = st.number_input("Minimum integral value",
+                                      min_value=0.0,
+                                      value=0.0)
+    with col2:
+        cv_threshold = st.number_input("Maximum std/mean value",
+                                       min_value=0.0,
+                                       value=0.5)
+    valid_masses = filter(state, m_threshold, cv_threshold)
 
     selected = st.multiselect(
         "Masses to show",
@@ -192,7 +202,8 @@ if state.ioff is not None:
         default=list(valid_masses),
     )
 
-    idx = [int(np.where(used_masses == m)[0][0]) for m in selected]
+    idx = [int(np.where(np.asarray(state.target_masses) == m)[0][0]) 
+           for m in selected]
     fig = plot_on_off_difference(
         sorted(state.files_df.wave.unique()),
         state.ioff[idx, :],

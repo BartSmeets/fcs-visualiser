@@ -27,7 +27,6 @@ class Data:
         #load = np.loadtxt(file, delimiter=',', skiprows=1, usecols=(1, 2))
         time = load[:, 0] * 1e6    # us
         self.voltage = -load[time>=0, 1]
-        self.voltage -= np.mean(self.voltage[-100:])
         self.time = time[time>=0]
         self.mass = self.calibrate(*init_param)
 

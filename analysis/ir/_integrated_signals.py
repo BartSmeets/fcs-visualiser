@@ -1,13 +1,42 @@
+"""
+Function to integrate the signals at target masses.
+
+This function wraps the data collection of the FCS to the analysis tools build for FELIX: `miooms.py`
+
+"""
 import numpy as np
 import streamlit as st
 
 from analysis import miooms
 from app.state import AppState
 
-from ._load_data import Data
+from .._load_data import Data
 
 
 def integrated_signals(state: AppState, targets: list):
+    """
+    Integrate the IR on and off signals at given mass positions. 
+    Careful, with and without IR is related to the configuration of the scopes!
+
+    Wrapper of `miooms.py`.
+    First, the FCS data is converted into the shape that an import from FELIX's `.h5` files would be.
+    Then, this data is provided to `miooms`.
+
+    Paramters
+    ---------
+    state: AppState
+        AppState containing at least `files_df`, `a` and `k`
+    targets: list
+        List or array containing the mass coordinates of the peaks that you want to integrate
+
+    Returns
+    -------
+    ioff: Array, shape=(len(targets), n_waves)
+        Array containing the integrated signals without IR
+    ion: Array, shape=(len(targets), n_waves)
+            Array containing the integrated signals with IR
+    
+    """
     df = state.files_df
     wavelengths = sorted(df.wave.unique())
     n_waves = len(wavelengths)

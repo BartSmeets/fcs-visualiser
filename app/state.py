@@ -35,6 +35,19 @@ class BoxcarSettings:
     bgaverage: bool = False
     bgmultiplier: float = 0.5
 
+    description: str = (
+        "Boxcar type: Defines how the integration window around the selected mass is determined.\n"
+        "Boxcar width (m/z): Width of the signal integration window used to extract ion intensity.\n\n"
+        "Resolution multiplier: Scales the automatically calculated boxcar width when using resolution-based gating.\n\n"
+        "Mass fit tolerance: Maximum allowed mass deviation when matching peaks to the target m/z.\n\n"
+        "Show gates: Displays the signal and background integration regions on the spectrum.\n\n"
+        "Background type: Selects the method used for baseline/background subtraction (none, offset, or range).\n\n"
+        "Background offset: Distance (in m/z) between the signal gate and the offset background gate.\n\n"
+        "Average background: Uses the average background across all scans instead of a scan-by-scan background value.\n\n"
+        "Background multiplier: Sets the width of the background gate relative to the signal gate and scales the subtraction accordingly.\n\n"
+        "Background range stop: Upper limit of the user-defined background region when using range-based background subtraction."
+    )
+
 
 @dataclass
 class IntegrationMassSettings:
