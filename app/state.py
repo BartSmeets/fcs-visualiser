@@ -22,34 +22,6 @@ def _empty_figure():
 
 
 @dataclass
-class BoxcarSettings:
-    bxtype: str = 'width'
-    bxwidth: float = 1.0
-    bxresmulti: float = 2.0
-    bxtolerance: float = 1.0
-    showgates: bool = False
-
-    bgtype: str = 'none'
-    bgrange: range = range(5000)
-    bgoffset: float = -1.2
-    bgaverage: bool = False
-    bgmultiplier: float = 0.5
-
-    description: str = (
-        "Boxcar type: Defines how the integration window around the selected mass is determined.\n"
-        "Boxcar width (m/z): Width of the signal integration window used to extract ion intensity.\n\n"
-        "Resolution multiplier: Scales the automatically calculated boxcar width when using resolution-based gating.\n\n"
-        "Mass fit tolerance: Maximum allowed mass deviation when matching peaks to the target m/z.\n\n"
-        "Show gates: Displays the signal and background integration regions on the spectrum.\n\n"
-        "Background type: Selects the method used for baseline/background subtraction (none, offset, or range).\n\n"
-        "Background offset: Distance (in m/z) between the signal gate and the offset background gate.\n\n"
-        "Average background: Uses the average background across all scans instead of a scan-by-scan background value.\n\n"
-        "Background multiplier: Sets the width of the background gate relative to the signal gate and scales the subtraction accordingly.\n\n"
-        "Background range stop: Upper limit of the user-defined background region when using range-based background subtraction."
-    )
-
-
-@dataclass
 class IntegrationMassSettings:
     main_mass: float = 58.933
     main_num: int = 40
@@ -73,7 +45,6 @@ class AppState:
     dataframe: pd.DataFrame = field(default_factory=_empty_dataframe)
     figure: object = field(default_factory=_empty_figure)
 
-    boxcar: BoxcarSettings | None = None
     intmass: IntegrationMassSettings | None = None
     files_df = None
     target_masses = None
@@ -104,7 +75,6 @@ def get_difference_state(defaults: dict) -> AppState:
             directory=defaults["directory"],
             a=defaults["calibration"]["a"],
             k=defaults["calibration"]["k"],
-            boxcar = BoxcarSettings(),
             intmass = IntegrationMassSettings(),
         )
     if "difference_state" not in st.session_state:

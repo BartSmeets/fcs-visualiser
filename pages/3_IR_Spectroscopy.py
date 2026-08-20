@@ -87,86 +87,26 @@ with st.expander("Masses"):
     st.write(target_masses)
 
 # ============================================================
-# Boxcar settings
+# Integration settings
 # ============================================================
 
-with st.expander("Boxcar Settings"):
-    st.write(state.boxcar.description)
+with st.expander("Integration Settings"):
     col1, col2 = st.columns(2)
 
     with col1:
-
-        bxtype = st.selectbox(
-            "Boxcar type",
-            ["width", "resolution"],
+        window = st.number_input(
+            "Search Window (m/z)",
+            value=1.0,
             disabled=False
         )
-        state.boxcar.bxtype = bxtype
-
-        bxwidth = st.number_input(
-            "Boxcar width (m/z)",
-            value=state.boxcar.bxwidth,
-            disabled=False
-        )
-        state.boxcar.bxwidth = bxwidth
-
-        bxresmulti = st.number_input(
-            "Resolution multiplier",
-            value=state.boxcar.bxresmulti,
-            disabled=False
-        )
-        state.boxcar.bxresmulti = bxresmulti
-
-        bxtolerance = st.number_input(
-            "Mass fit tolerance",
-            value=state.boxcar.bxtolerance,
-            disabled=False
-        )
-        state.boxcar.bxtolerance = bxtolerance
-
-        showgates = st.checkbox(
-            "Show gates",
-            value=state.boxcar.showgates,
-            disabled=False
-        )
-        state.boxcar.showgates = showgates
 
     with col2:
 
-        bgtype = st.selectbox(
-            "Background type",
-            ["none", "offset", "range"],
+        max_half_width = st.number_input(
+            "Max Half Width",
+            value=50,
             disabled=False
         )
-        state.boxcar.bgtype = bgtype
-
-        bgoffset = st.number_input(
-            "Background offset",
-            value=state.boxcar.bgoffset,
-            disabled=False
-        )
-        state.boxcar.bgoffset = bgoffset
-
-        bgaverage = st.checkbox(
-            "Average background",
-            value=state.boxcar.bgaverage,
-            disabled=False
-        )
-        state.boxcar.bgaverage = bgaverage
-
-        bgmultiplier = st.number_input(
-            "Background multiplier",
-            value=state.boxcar.bgmultiplier,
-            disabled=False
-        )
-        state.boxcar.bgmultiplier = bgmultiplier
-
-        bgrange_text = st.number_input(
-            "Background range stop",
-            value=5000,
-            disabled=False
-        )
-        state.boxcar.bgrange = range(int(bgrange_text))
 
 # ============================================================
 # Integration
@@ -176,7 +116,7 @@ run_button = st.button("Run Integration")
 
 if run_button and state.directory.exists():
     state.target_masses = target_masses          # freeze the masses used
-    state.ioff, state.ion = integrated_signals(state, target_masses)
+    state.ioff, state.ion = integrated_signals(state, target_masses, window, int(max_half_width))
 
 if state.ioff is not None:
     if not st.toggle("difference | depletion mode", value=False):
@@ -213,7 +153,7 @@ if state.ioff is not None:
     )
     st.plotly_chart(fig, width='stretch')
 
-    csv = gen_csv(state)
+    csv = gen_csv(state, idx)
 
     st.download_button(
         "Download CSV",

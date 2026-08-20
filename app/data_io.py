@@ -128,17 +128,17 @@ def gen_df(state: AppState) -> None:
     )
 
 
-def gen_csv(state: AppState):
+def gen_csv(state: AppState, idx):
     """
     Export intgerated signals to csv
 
     """
     export_rows = []
-    for i, mass in enumerate(state.target_masses):
+    for i in idx:
         for j, wl in enumerate(state.files_df.wave.unique()):
             export_rows.append({
                 "wavelength_nm": wl,
-                "mass": mass,
+                "mass": state.target_masses[i],
                 "ion": state.ion[i, j],
                 "ioff": state.ioff[i, j],
                 "diff": state.ion[i, j] - state.ioff[i, j],

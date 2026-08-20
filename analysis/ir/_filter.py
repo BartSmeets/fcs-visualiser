@@ -36,10 +36,8 @@ def filter(state: AppState, m_threshold: float, cv_threshold: float):
     nan_mask = (~np.isnan(state.ioff).any(axis=1) & ~np.isnan(state.ioff).any(axis=1))
     valid_masses = used_masses[nan_mask]
 
-    cv = np.std(state.ioff[nan_mask], axis=1)/np.mean(state.ioff[nan_mask], axis=1)
-    print("cv", cv)        
+    cv = np.std(state.ioff[nan_mask], axis=1)/np.mean(state.ioff[nan_mask], axis=1)       
     cv_mask = (np.mean(state.ioff[nan_mask], axis=1) > m_threshold) & (cv < cv_threshold)
-    print("cv after mask", valid_masses[cv_mask])
 
     valid_masses = valid_masses[cv_mask]
     return valid_masses

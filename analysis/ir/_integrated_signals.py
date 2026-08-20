@@ -1,7 +1,6 @@
 import numpy as np
 import streamlit as st
 from scipy.integrate import trapezoid
-from scipy.ndimage import uniform_filter1d
 from scipy.signal import find_peaks
 
 from app.state import AppState
@@ -9,7 +8,7 @@ from app.state import AppState
 from .._load_data import Data
 
 
-def get_integrated_signals(spec, mass_axis, target_mass, boxcar=1,
+def get_integrated_signals(spec, mass_axis, target_mass,
                             search_window=0.5, max_half_width=50):
     """
     Locate and integrate a targeted peak across all wave/scan rows.
@@ -42,25 +41,24 @@ def get_integrated_signals(spec, mass_axis, target_mass, boxcar=1,
     ------
     ValueError
         If the target mass is not found in ANY wave.
+
     """
     n_waves = spec.shape[0]
     integrated = np.full(n_waves, np.nan)
     apex_mass = np.full(n_waves, np.nan)
 
     for i in range(n_waves):
-        y = spec[i, :]
-        if boxcar and boxcar > 1:
-            y = uniform_filter1d(y, size=boxcar)
+        y = spec[i, :]  # Spectrum at a given wavenumber
 
-        # --- locate true apex within +/- search_window of target_mass ---
+        # Design mask for search/integration window
         mask = (mass_axis >= target_mass - search_window) & \
                (mass_axis <= target_mass + search_window)
         if not np.any(mask):
             continue
 
+        # Find true peak corresponding to target
         idx_range = np.where(mask)[0]
         y_local = y[idx_range]
-
         peaks, props = find_peaks(y_local, prominence=max(np.ptp(y_local) * 0.02, 1e-12))
         if len(peaks) == 0:
             apex_local = np.argmax(y_local)
@@ -68,18 +66,18 @@ def get_integrated_signals(spec, mass_axis, target_mass, boxcar=1,
             apex_local = peaks[np.argmax(props["prominences"])]
         apex_idx = idx_range[apex_local]
 
-        # --- walk outward to nearest valleys for integration bounds ---
+        # Walk outward to half max for integration bounds
         left = apex_idx
         while (left > 0
                and left > apex_idx - max_half_width
-               and y[left - 1] <= y[left]):
+               and y[left] > y[apex_idx]/2):
             left -= 1
 
         right = apex_idx
-        n = len(y)
-        while (right < n - 1
+        imax = len(y)
+        while (right < imax - 1
                and right < apex_idx + max_half_width
-               and y[right + 1] <= y[right]):
+               and y[right] > y[apex_idx]):
             right += 1
 
         integrated[i] = trapezoid(y[left:right + 1], mass_axis[left:right + 1])
@@ -91,7 +89,7 @@ def get_integrated_signals(spec, mass_axis, target_mass, boxcar=1,
     return integrated, apex_mass
 
 
-def integrated_signals(state: AppState, targets: list):
+def integrated_signals(state: AppState, targets: list, window: float, max_half_width: int):
     """
     Integrate the IR on and off signals at given mass positions.
     Careful, with and without IR is related to the configuration of the scopes!
@@ -106,6 +104,10 @@ def integrated_signals(state: AppState, targets: list):
         AppState containing at least `files_df`, `a` and `k`
     targets: list
         List or array containing the mass coordinates of the peaks that you want to integrate
+    window: float
+        Full width of the search window
+    max_half_width: int
+        Maximum number of datapoints for finding the half maximum
 
     Returns
     -------
@@ -113,6 +115,7 @@ def integrated_signals(state: AppState, targets: list):
         Array containing the integrated signals without IR
     ion: Array, shape=(len(targets), n_waves)
         Array containing the integrated signals with IR
+
     """
     df = state.files_df
     wavelengths = sorted(df.wave.unique())
@@ -130,6 +133,9 @@ def integrated_signals(state: AppState, targets: list):
     spec_off = spec_on = None
     data_on = data_off = None
 
+    # Build datastructure
+    ## This was previously to match FELIX's datastructure since I wrapped their solver.
+    ## Now it may not be neccessary anymore, but don't know don't care
     for i, wave in enumerate(wavelengths):
         progress.progress((i + 1) / n_waves)
 
@@ -153,10 +159,10 @@ def integrated_signals(state: AppState, targets: list):
         try:
             ioff[i, :], _ = get_integrated_signals(
                 spec_off, data_off.mass, mass,
-                search_window=0.5)
+                search_window=window/2, max_half_width=max_half_width)
             ion[i, :], _ = get_integrated_signals(
                 spec_on, data_on.mass, mass,
-                search_window=0.5)
+                search_window=window/2, max_half_width=max_half_width)
         except ValueError:
             print(f"{mass} does not exist")
 
