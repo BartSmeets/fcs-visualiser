@@ -1,5 +1,7 @@
 import numpy as np
+from pybaselines import Baseline
 
+LAM = 1e12
 
 class Data:
     '''
@@ -30,6 +32,11 @@ class Data:
         self.time = time[time>=0]
         self.mass = self.calibrate(*init_param)
 
+        baseline_fitter = Baseline(x_data=self.mass)
+        baseline = baseline_fitter.imodpoly(self.voltage, poly_order=3)[0]
+
+        self.voltage -= baseline
+
 
     def calibrate(self, G: float, t_off: float):
         """
@@ -45,24 +52,3 @@ class Data:
         """
         mass = G * (self.time - t_off)**2
         return mass
-
-    # TODO: baseline correction
-    # def baseline_correction(self, lam=1e9, multiplier=1, baseline_data=None):
-    #     # Baseline correction
-    #     if baseline_data != None:
-    #         def LSS(y, lam):
-    #             '''
-    #             Least Squares Smoothing
-    #             '''
-    #             size = len(y)
-    #             D = sparse.diags([1, -2, 1], [0, -1, -2], shape=(size, size-2))   # Second order difference matrix
-    #             D = lam * D.dot(D.transpose())
-    #             I = sparse.identity(size)
-    #             z = spsolve(I + D, y)
-    #             return z
-            
-    #         baseline = np.load(baseline_data)
-    #         baseline = -multiplier * baseline[time>=0, 1]
-    #         self.baseline = LSS(baseline, lam)  # Smoothen Baseline Measurement
-    #         self.voltage = self.voltage - self.baseline
-    #         return
