@@ -103,8 +103,8 @@ with st.expander("Integration Settings"):
     with col2:
 
         max_half_width = st.number_input(
-            "Max Half Width",
-            value=50,
+            "Max Half Width (m/z)",
+            value=1.0,
             disabled=False
         )
 
@@ -116,7 +116,7 @@ run_button = st.button("Run Integration")
 
 if run_button and state.directory.exists():
     state.target_masses = target_masses          # freeze the masses used
-    state.ioff, state.ion = integrated_signals(state, target_masses, window, int(max_half_width))
+    state.ioff, state.ion = integrated_signals(state, target_masses, window, max_half_width)
 
 if state.ioff is not None:
     if not st.toggle("difference | depletion mode", value=False):

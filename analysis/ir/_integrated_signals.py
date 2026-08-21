@@ -69,14 +69,14 @@ def get_integrated_signals(spec, mass_axis, target_mass,
         # Walk outward to half max for integration bounds
         left = apex_idx
         while (left > 0
-               and left > apex_idx - max_half_width
+               and np.abs(mass_axis[left] - target_mass) <=  max_half_width
                and y[left] > y[apex_idx]/2):
             left -= 1
 
         right = apex_idx
         imax = len(y)
         while (right < imax - 1
-               and right < apex_idx + max_half_width
+               and np.abs(mass_axis[right] - target_mass) <=  max_half_width
                and y[right] > y[apex_idx]):
             right += 1
 
@@ -85,7 +85,6 @@ def get_integrated_signals(spec, mass_axis, target_mass,
 
     if np.all(np.isnan(integrated)):
         raise ValueError(f"target mass {target_mass} not found in any wave")
-
     return integrated, apex_mass
 
 
