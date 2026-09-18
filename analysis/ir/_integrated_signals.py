@@ -88,7 +88,7 @@ def get_integrated_signals(spec, mass_axis, target_mass,
     return integrated, apex_mass
 
 
-def integrated_signals(state: AppState, targets: list, window: float, max_half_width: int):
+def integrated_signals(state: AppState, window: float, max_half_width: int):
     """
     Integrate the IR on and off signals at given mass positions.
     Careful, with and without IR is related to the configuration of the scopes!
@@ -101,8 +101,7 @@ def integrated_signals(state: AppState, targets: list, window: float, max_half_w
     ----------
     state: AppState
         AppState containing at least `files_df`, `a` and `k`
-    targets: list
-        List or array containing the mass coordinates of the peaks that you want to integrate
+
     window: float
         Full width of the search window
     max_half_width: int
@@ -114,7 +113,8 @@ def integrated_signals(state: AppState, targets: list, window: float, max_half_w
         Array containing the integrated signals without IR
     ion: Array, shape=(len(targets), n_waves)
         Array containing the integrated signals with IR
-
+    targets: list
+        List or array containing the mass coordinates of the peaks
     """
     df = state.files_df
     wavelengths = sorted(df.wave.unique())
@@ -131,10 +131,11 @@ def integrated_signals(state: AppState, targets: list, window: float, max_half_w
 
     spec_off = spec_on = None
     data_on = data_off = None
+    targets = []
 
     # Build datastructure
     ## This was previously to match FELIX's datastructure since I wrapped their solver.
-    ## Now it may not be neccessary anymore, but don't know don't care
+    ## Now it may not be neccessary anymore; but don't know don't care
     for i, wave in enumerate(wavelengths):
         progress.progress((i + 1) / n_waves)
 
@@ -151,7 +152,25 @@ def integrated_signals(state: AppState, targets: list, window: float, max_half_w
         spec_off[i, :] = data_off.voltage
         spec_on[i, :] = data_on.voltage
 
+        peaks, _ = find_peaks(data_off.voltage, prominence=max(np.ptp(data_off.voltage) * 0.02, 1e-12))
+        targets.append(data_off.mass[peaks])
+
+    # Filter non universal peaks
+    all_peaks = np.concatenate(targets)
+    all_peaks = np.unique(np.sort(all_peaks))
+
+    min_distance = 1
+    filtered_peaks = [all_peaks[0]]
+    for peak in all_peaks[1:]:
+        if peak - filtered_peaks[-1] >= min_distance:
+            filtered_peaks.append(peak)
+    filtered_peaks = np.array(filtered_peaks)
+    targets = filtered_peaks
+
     # Integrate
+    ## Integration is not optimized. 
+    ## It is currently build on old infrastructure, 
+    ##  i.e., it still searches the closest match eventhough the exact peak positions are provided
     ioff = np.full((len(targets), n_waves), np.nan)
     ion = np.full((len(targets), n_waves), np.nan)
     for i, mass in enumerate(targets):
@@ -165,4 +184,4 @@ def integrated_signals(state: AppState, targets: list, window: float, max_half_w
         except ValueError:
             print(f"{mass} does not exist")
 
-    return ioff, ion
+    return ioff, ion, targets

@@ -3,7 +3,7 @@ import streamlit as st
 import toml
 
 # Your imports
-from analysis.ir import filter, integrated_signals, target_mass
+from analysis.ir import filter, integrated_signals
 from app import sidebar
 from app.data_io import gen_csv, get_all_data
 from app.plotting import plot_on_off_difference
@@ -43,50 +43,6 @@ with st.expander("Files"):
 refresh = st.button("🔄 Refresh folder")
 
 # ============================================================
-# Mass definition
-# ============================================================
-
-col1, col2 = st.columns(2)
-
-with col1:
-    st.subheader("Main")
-    main_mass = st.number_input(
-        "Mass (m/z)",
-        value=state.intmass.main_mass,
-        key="main_mass_input",
-    )
-    state.intmass.main_mass = main_mass
-
-    max_main = st.number_input(
-        "Maximum number of mains",
-        min_value=1,
-        value=state.intmass.main_num,
-        key="main_num_input",
-    )
-    state.intmass.main_num = int(max_main)
-
-with col2:
-    st.subheader("Messenger")
-    messenger_mass = st.number_input(
-        "Mass (m/z)",
-        value=state.intmass.messenger_mass,
-        key="messenger_mass_input",
-    )
-    state.intmass.messenger_mass = messenger_mass
-
-    max_messenger = st.number_input(
-        "Maximum number of messengers",
-        min_value=1,
-        value=state.intmass.messenger_num,
-        key="messenger_num_input",
-    )
-    state.intmass.messenger_num = int(max_messenger)
-
-target_masses = target_mass(state)
-with st.expander("Masses"):
-    st.write(target_masses)
-
-# ============================================================
 # Integration settings
 # ============================================================
 
@@ -115,8 +71,7 @@ with st.expander("Integration Settings"):
 run_button = st.button("Run Integration")
 
 if run_button and state.directory.exists():
-    state.target_masses = target_masses          # freeze the masses used
-    state.ioff, state.ion = integrated_signals(state, target_masses, window, max_half_width)
+    state.ioff, state.ion, state.target_masses = integrated_signals(state, window, max_half_width)
 
 if state.ioff is not None:
     if not st.toggle("difference | depletion mode", value=False):
@@ -138,11 +93,11 @@ if state.ioff is not None:
 
     selected = st.multiselect(
         "Masses to show",
-        options=list(valid_masses),   # only offer masses that actually have data
-        default=list(valid_masses),
+        options=list(np.round(valid_masses, 2)),   # only offer masses that actually have data
+        default=list(np.round(valid_masses, 2)),
     )
 
-    idx = [int(np.where(np.asarray(state.target_masses) == m)[0][0]) 
+    idx = [int(np.where(np.asarray(np.round(state.target_masses, 2)) == m)[0][0]) 
            for m in selected]
     fig = plot_on_off_difference(
         sorted(state.files_df.wave.unique()),
