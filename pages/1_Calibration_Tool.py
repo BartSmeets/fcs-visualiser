@@ -12,7 +12,7 @@ import streamlit as st
 # Information
 st.set_page_config(layout='wide')
 st.write("# Manual Calibration Tool")
-st.write("# Not now, little man")
+
 
 
 # # Figure

@@ -7,7 +7,7 @@ from analysis.ir import filter, integrated_signals
 from app import sidebar
 from app.data_io import gen_csv, get_all_data
 from app.plotting import plot_on_off_difference
-from app.state import get_difference_state
+from app.state import IntegrationMassSettings, get_state
 
 # --------------------------------------------------------------------------
 # Setup / session state
@@ -18,13 +18,14 @@ st.set_page_config(
     page_icon="https://static-00.iconduck.com/assets.00/python-icon-512x509-pb65l7gl.png",
     layout="wide",
 )
-st.write("# FCS Visualiser")
+st.write("# IR Spectroscopy Quicky")
 
 with open('defaults.toml', 'r') as f:
     defaults = toml.load(f)
 
-state = get_difference_state(defaults)
+state = get_state(defaults)
 state.files_df = get_all_data(state)
+state.intmass = IntegrationMassSettings()
 # ============================================================
 # Streamlit UI
 # ============================================================

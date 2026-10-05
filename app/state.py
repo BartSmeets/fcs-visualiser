@@ -52,31 +52,15 @@ class AppState:
     ion = None
 
 
-def get_home_state(defaults: dict) -> AppState:
+def get_state(defaults: dict) -> AppState:
     """
     Return the single AppState for this session, creating it on first run.
     
     """
-    if "home_state" not in st.session_state:
-        st.session_state["home_state"] = AppState(
+    if "state" not in st.session_state:
+        st.session_state["state"] = AppState(
             directory=Path(defaults["directory"]),
             a=defaults["calibration"]["a"],
             k=defaults["calibration"]["k"],
         )
-    return st.session_state["home_state"]
-
-
-def get_difference_state(defaults: dict) -> AppState:
-    """
-    Return the single AppState for this session, creating it on first run.
-    
-    """
-    state = AppState(
-            directory=defaults["directory"],
-            a=defaults["calibration"]["a"],
-            k=defaults["calibration"]["k"],
-            intmass = IntegrationMassSettings(),
-        )
-    if "difference_state" not in st.session_state:
-        st.session_state["difference_state"] = state
-    return st.session_state["difference_state"]
+    return st.session_state["state"]

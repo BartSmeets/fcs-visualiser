@@ -174,14 +174,7 @@ def integrated_signals(state: AppState, window: float, max_half_width: int):
     ioff = np.full((len(targets), n_waves), np.nan)
     ion = np.full((len(targets), n_waves), np.nan)
     for i, mass in enumerate(targets):
-        try:
-            ioff[i, :], _ = get_integrated_signals(
-                spec_off, data_off.mass, mass,
-                search_window=window/2, max_half_width=max_half_width)
-            ion[i, :], _ = get_integrated_signals(
-                spec_on, data_on.mass, mass,
-                search_window=window/2, max_half_width=max_half_width)
-        except ValueError:
-            print(f"{mass} does not exist")
+        ioff[i, :] = spec_off[:, np.argmin(np.abs(data_off.mass - mass))]
+        ion[i, :] = spec_on[:, np.argmin(np.abs(data_off.mass - mass))]
 
     return ioff, ion, targets

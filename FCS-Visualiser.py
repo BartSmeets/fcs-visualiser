@@ -11,7 +11,7 @@ import modules
 from app import sidebar
 from app.data_io import basename, gen_df, list_data_files
 from app.plotting import generate_fig
-from app.state import get_home_state
+from app.state import get_state
 
 FILE_EXTENSION = "*.npy"
 
@@ -35,7 +35,7 @@ except OSError:
     with open('defaults.toml', 'r') as f:
         defaults = toml.load(f)
 
-state = get_home_state(defaults)
+state = get_state(defaults)
 
 # --------------------------------------------------------------------------
 # Sidebar: directory selection
